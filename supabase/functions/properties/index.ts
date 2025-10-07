@@ -21,10 +21,10 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    const apiToken = req.headers.get("x-api-token");
+    const apiToken = req.headers.get("token") || req.headers.get("x-api-token");
     if (!apiToken) {
       return new Response(
-        JSON.stringify({ error: "Missing x-api-token header" }),
+        JSON.stringify({ error: "Missing token header" }),
         {
           status: 401,
           headers: {
@@ -164,11 +164,12 @@ Deno.serve(async (req: Request) => {
       for (const prop of apiProperties) {
         const propertyData = {
           agency_id: agency.id,
+          source: prop.Source || agency.primary_source || 'unknown',
           external_id: prop.ListReff || prop.Id?.toString(),
           house_location: prop.Address || '',
           house_price: prop.Price || '',
-          house_bedrooms: prop.Bedrooms?.toString() || '',
-          house_bathrooms: prop.Bathrooms?.toString() || '',
+          house_bedrooms: parseInt(prop.Bedrooms) || null,
+          house_bathrooms: parseInt(prop.Bathrooms) || null,
           house_mt_squared: prop.Size || '',
           house_extra_info_1: prop.PropertyType || '',
           house_extra_info_2: prop.BER || '',
