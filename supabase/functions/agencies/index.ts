@@ -3,7 +3,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-api-token",
 };
 
 Deno.serve(async (req: Request) => {
@@ -15,10 +15,10 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    const apiToken = req.headers.get("x-api-token");
+    if (!apiToken) {
       return new Response(
-        JSON.stringify({ error: "Missing Authorization header" }),
+        JSON.stringify({ error: "Missing x-api-token header" }),
         {
           status: 401,
           headers: {
@@ -32,7 +32,7 @@ Deno.serve(async (req: Request) => {
     const response = await fetch("https://api.stefanmars.nl/api/agencies", {
       method: "GET",
       headers: {
-        "Authorization": authHeader,
+        "Authorization": `Bearer ${apiToken}`,
       },
     });
 
