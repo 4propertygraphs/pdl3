@@ -113,9 +113,11 @@ class ApiService {
     }
     GetFieldMappings() {
         const token = this.getAuthToken();
-        return this.api.get(ApiService.urls.field_mappings(), {
+        return axios.get(`${this.edgeFunctionsUrl}/field-mappings`, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'apikey': this.supabaseAnonKey,
+                'Authorization': `Bearer ${this.supabaseAnonKey}`,
+                'x-api-token': token
             }
         });
     }
@@ -123,27 +125,33 @@ class ApiService {
     // Add Field Mapping CRUD
     addFieldMapping(data: any) {
         const token = this.getAuthToken();
-        return this.api.post(ApiService.urls.field_mappings(), data, {
+        return axios.post(`${this.edgeFunctionsUrl}/field-mappings`, data, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'apikey': this.supabaseAnonKey,
+                'Authorization': `Bearer ${this.supabaseAnonKey}`,
+                'x-api-token': token
             }
         });
     }
 
     updateFieldMapping(id: number, data: any) {
         const token = this.getAuthToken();
-        return this.api.put(`${ApiService.urls.field_mappings()}/${id}`, data, {
+        return axios.put(`${this.edgeFunctionsUrl}/field-mappings/${id}`, data, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'apikey': this.supabaseAnonKey,
+                'Authorization': `Bearer ${this.supabaseAnonKey}`,
+                'x-api-token': token
             }
         });
     }
 
     deleteFieldMapping(id: number) {
         const token = this.getAuthToken();
-        return this.api.delete(`${ApiService.urls.field_mappings()}/${id}`, {
+        return axios.delete(`${this.edgeFunctionsUrl}/field-mappings/${id}`, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'apikey': this.supabaseAnonKey,
+                'Authorization': `Bearer ${this.supabaseAnonKey}`,
+                'x-api-token': token
             }
         });
     }
