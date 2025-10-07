@@ -113,12 +113,33 @@ export class ScraperService {
         }
     }
 
+    static parsePropertyData(property: any, agencyName: string, agencyLogo: string) {
+        const images = property.FileName?.filter((img: string) => img && img.trim() !== '') || [];
+        const imagesUrlHouse = images.length > 0 ? images.join(',') : '';
+
+        return {
+            agency_agent_name: property.AgentName || '',
+            agency_name: agencyName,
+            house_location: property.Address || '',
+            house_price: property.Price?.toString() || '0',
+            house_bedrooms: parseInt(property.Bedrooms) || 0,
+            house_bathrooms: parseInt(property.Bathrooms) || 0,
+            house_mt_squared: property.FloorArea?.toString() || '',
+            house_extra_info_1: property.PropertyType || '',
+            house_extra_info_2: property.BER || '',
+            house_extra_info_3: property.DisplayAddress || '',
+            house_extra_info_4: property.SaleType || '',
+            agency_image_url: agencyLogo || '',
+            images_url_house: imagesUrlHouse
+        };
+    }
+
     static async scrapeAndSaveProperties(): Promise<void> {
         try {
             console.log('[Scraper] Fetching agencies from database...');
             const { data: agencies } = await supabase
                 .from('agencies')
-                .select('id, unique_key, name')
+                .select('id, unique_key, name, logo')
                 .not('unique_key', 'is', null);
 
             if (!agencies || agencies.length === 0) {
@@ -149,11 +170,13 @@ export class ScraperService {
                                 .eq('agency_id', agency.id)
                                 .maybeSingle();
 
+                            const parsedData = this.parsePropertyData(property, agency.name, agency.logo);
+
                             const propertyData = {
                                 agency_id: agency.id,
                                 source: '4pm',
                                 external_id: property.ListReff,
-                                data: property,
+                                ...parsedData,
                                 updated_at: new Date().toISOString()
                             };
 
