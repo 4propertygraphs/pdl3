@@ -36,7 +36,12 @@ Deno.serve(async (req: Request) => {
 
     if (!response.ok) {
       console.error('[LOGIN] Stefanmars login failed:', response.status);
-      const errorData = await response.json();
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        errorData = { error: 'Login failed', status: response.status };
+      }
       return new Response(JSON.stringify(errorData), {
         status: response.status,
         headers: {
@@ -46,10 +51,24 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const data = await response.json();
-    console.log('[LOGIN] Stefanmars login successful, token present:', !!data.token);
+    let data;
+    try {
+      const responseText = await response.text();
+      console.log('[LOGIN] Raw response:', responseText);
+      data = JSON.parse(responseText);
+      console.log('[LOGIN] Parsed data:', data);
+      console.log('[LOGIN] Stefanmars login successful, token present:', !!data.token);
+    } catch (e) {
+      console.error('[LOGIN] Failed to parse response:', e);
+      return new Response(JSON.stringify({ error: 'Failed to parse login response' }), {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      });
+    }
 
-    // Store the stefanmars token in our users table
     if (data.token) {
       const { error: updateError } = await supabaseClient
         .from('users')
@@ -63,7 +82,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Add stefanmars_token to response for frontend
     const responseData = {
       ...data,
       stefanmars_token: data.token
