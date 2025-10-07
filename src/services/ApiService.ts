@@ -54,13 +54,16 @@ class ApiService {
         });
     }
 
-    getAgencies() {
+    getAgencies(sync: boolean = true) {
         const token = this.getAuthToken();
         return axios.get(`${this.edgeFunctionsUrl}/agencies`, {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
                 'x-api-token': token
+            },
+            params: {
+                sync: sync ? 'true' : 'false'
             }
         });
     }
