@@ -10,7 +10,8 @@ import Login from './pages/Login.tsx';
 import Nopage from './pages/Nopage.tsx';
 import apiService from './services/ApiService'; // Gebruik de instantie
 import Agencies from './pages/Agencies.tsx';
-import FieldMappings from './pages/FieldMappings'; // Add this import
+import FieldMappings from './pages/FieldMappings';
+import { AutoScraper } from './components/AutoScraper';
 
 // PrivateRoute component
 const PrivateRoute = ({ element }: { element: React.ReactElement }) => {
@@ -63,6 +64,7 @@ const App = () => {
   return (
     <StrictMode>
       <BrowserRouter basename={basename}>
+        <AutoScraper />
         <Routes>
           <Route
             path="/login"
