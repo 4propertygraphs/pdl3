@@ -322,7 +322,15 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
 
 
     const renderFieldComparison = () => {
-        if (!fieldMappings.length) return <p className='dark:text-gray-300'>Loading field mappings...</p>;
+        if (!fieldMappings.length) {
+            // Show basic property data when no field mappings are available
+            return (
+                <div className="overflow-y-auto max-h-[70vh]">
+                    <h3 className="text-lg font-semibold mb-4 dark:text-gray-200">Property Details</h3>
+                    {renderData(property)}
+                </div>
+            );
+        }
 
         let sourceMap = [
             { title: 'FindAHome', key: 'propertydrive', data: property, primaryKey: null },
