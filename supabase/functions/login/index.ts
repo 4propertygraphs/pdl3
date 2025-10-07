@@ -63,7 +63,13 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return new Response(JSON.stringify(data), {
+    // Add stefanmars_token to response for frontend
+    const responseData = {
+      ...data,
+      stefanmars_token: data.token
+    };
+
+    return new Response(JSON.stringify(responseData), {
       status: response.status,
       headers: {
         ...corsHeaders,

@@ -12,19 +12,29 @@ function Login() {
         setError(null);
 
         try {
-            const response = await apiService.login(email, password); // Gebruik apiService hier
+            const response = await apiService.login(email, password);
             console.log('[LOGIN] Full response:', response.data);
-            const token = response.data.token;
-            console.log('[LOGIN] Token received:', token);
 
-            if (!token) {
-                console.error('[LOGIN] No token in response!');
+            const jwtToken = response.data.token;
+            const stefanmarsToken = response.data.stefanmars_token || response.data.api_token;
+
+            console.log('[LOGIN] JWT Token:', jwtToken);
+            console.log('[LOGIN] Stefanmars Token:', stefanmarsToken);
+
+            if (!jwtToken) {
+                console.error('[LOGIN] No JWT token in response!');
                 setError('Login failed - no token received');
                 return;
             }
 
-            localStorage.setItem('token', token);
-            console.log('[LOGIN] Token saved to localStorage');
+            localStorage.setItem('token', jwtToken);
+            if (stefanmarsToken) {
+                localStorage.setItem('stefanmars_token', stefanmarsToken);
+                console.log('[LOGIN] Stefanmars token saved to localStorage');
+            } else {
+                console.warn('[LOGIN] No stefanmars token in response');
+            }
+
             window.location.href = `${basePath}`;
         } catch (err) {
             console.error('Login failed:', err);

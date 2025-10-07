@@ -17,9 +17,14 @@ class ApiService {
         });
     }
 
-    // Helper method to get token from localStorage
+    // Helper method to get JWT token from localStorage
     private getAuthToken(): string | null {
         return localStorage.getItem('token');
+    }
+
+    // Helper method to get stefanmars API token from localStorage
+    private getStefanmarsToken(): string | null {
+        return localStorage.getItem('stefanmars_token');
     }
 
     // URL utility functions
@@ -213,18 +218,18 @@ class ApiService {
 
     // Add method to refresh agencies
     refreshAgencies() {
-        const token = this.getAuthToken();
+        const stefanmarsToken = this.getStefanmarsToken();
         console.log('[API SERVICE] ======================');
-        console.log('[API SERVICE] Auth Token from localStorage:', token);
-        console.log('[API SERVICE] Token present?:', token ? 'YES' : 'NO');
-        console.log('[API SERVICE] Token value:', token);
+        console.log('[API SERVICE] Stefanmars Token from localStorage:', stefanmarsToken);
+        console.log('[API SERVICE] Token present?:', stefanmarsToken ? 'YES' : 'NO');
+        console.log('[API SERVICE] Token value:', stefanmarsToken);
         console.log('[API SERVICE] Edge Functions URL:', this.edgeFunctionsUrl);
         console.log('[API SERVICE] Full URL:', `${this.edgeFunctionsUrl}/agencies?sync=true`);
 
         const headers = {
             'apikey': this.supabaseAnonKey,
             'Authorization': `Bearer ${this.supabaseAnonKey}`,
-            'token': token || ''
+            'token': stefanmarsToken || ''
         };
 
         console.log('[API SERVICE] Headers being sent:', JSON.stringify(headers, null, 2));
