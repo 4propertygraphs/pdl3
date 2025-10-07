@@ -92,15 +92,48 @@ class ApiService {
 
 
     getMyHome(apiKey: string, Listreff: string) {
-        return this.api.get(ApiService.urls.GetMyHome() + `?key=${apiKey}&id=${Listreff}`);
-
+        const token = this.getAuthToken();
+        return axios.get(`${this.edgeFunctionsUrl}/myhome`, {
+            headers: {
+                'apikey': this.supabaseAnonKey,
+                'Authorization': `Bearer ${this.supabaseAnonKey}`,
+                'x-api-token': token
+            },
+            params: {
+                key: apiKey,
+                id: Listreff
+            }
+        });
     }
+
     getDaft(apiKey: string, Listreff: string) {
-        return this.api.get(ApiService.urls.GetDaft() + `?key=${apiKey}&id=${Listreff}`);
-
+        const token = this.getAuthToken();
+        return axios.get(`${this.edgeFunctionsUrl}/daft`, {
+            headers: {
+                'apikey': this.supabaseAnonKey,
+                'Authorization': `Bearer ${this.supabaseAnonKey}`,
+                'x-api-token': token
+            },
+            params: {
+                key: apiKey,
+                id: Listreff
+            }
+        });
     }
+
     GetAcquaint(apiKey: string, Listreff: string) {
-        return this.api.get(ApiService.urls.GetAcquaint() + `?key=${apiKey}&id=${Listreff}`);
+        const token = this.getAuthToken();
+        return axios.get(`${this.edgeFunctionsUrl}/acquaint`, {
+            headers: {
+                'apikey': this.supabaseAnonKey,
+                'Authorization': `Bearer ${this.supabaseAnonKey}`,
+                'x-api-token': token
+            },
+            params: {
+                key: apiKey,
+                id: Listreff
+            }
+        });
     }
     updateAgency(id: number, data: Partial<Agency>) {
         const token = this.getAuthToken();

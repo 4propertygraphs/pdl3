@@ -37,23 +37,41 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
         const fetchData = async () => {
             try {
                 if (property?.ListReff) {
+                    // Fetch MyHome data
                     if (apiKey) {
-                        setAdditionalInfo({ message: 'MyHome integration not yet migrated.' });
-                        // TODO: Migrate MyHome API to Edge Functions
+                        try {
+                            const response = await apiService.getMyHome(apiKey, property.ListReff);
+                            setAdditionalInfo(response.data);
+                        } catch (error) {
+                            console.error('Error fetching MyHome data:', error);
+                            setAdditionalInfo({ message: 'Failed to load MyHome data.' });
+                        }
                     } else {
                         setAdditionalInfo({ message: 'MyHome API key is missing.' });
                     }
 
+                    // Fetch Daft data
                     if (daft_api_key) {
-                        setDaftInfo({ message: 'Daft integration not yet migrated.' });
-                        // TODO: Migrate Daft API to Edge Functions
+                        try {
+                            const response = await apiService.getDaft(daft_api_key, property.ListReff);
+                            setDaftInfo(response.data);
+                        } catch (error) {
+                            console.error('Error fetching Daft data:', error);
+                            setDaftInfo({ message: 'Failed to load Daft data.' });
+                        }
                     } else {
                         setDaftInfo({ message: 'Daft API key is missing.' });
                     }
 
+                    // Fetch Acquaint data
                     if (acquiantKey) {
-                        setAcquaintInfo({ message: 'Acquaint integration not yet migrated.' });
-                        // TODO: Migrate Acquaint API to Edge Functions
+                        try {
+                            const response = await apiService.GetAcquaint(acquiantKey, property.ListReff);
+                            setAcquaintInfo(response.data);
+                        } catch (error) {
+                            console.error('Error fetching Acquaint data:', error);
+                            setAcquaintInfo({ message: 'Failed to load Acquaint data.' });
+                        }
                     } else {
                         setAcquaintInfo({ message: 'Acquaint API key is missing.' });
                     }
@@ -64,7 +82,7 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
         };
 
         fetchData();
-    }, [property, apiKey, acquiantKey]);
+    }, [property, apiKey, acquiantKey, daft_api_key]);
 
     useEffect(() => {
         const fetchFieldMappings = async () => {
