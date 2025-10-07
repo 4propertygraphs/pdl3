@@ -4,7 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, apikey, token",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, apikey, token, x-api-token",
 };
 
 Deno.serve(async (req: Request) => {
@@ -21,8 +21,10 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    const apiToken = req.headers.get("token");
+    const apiToken = req.headers.get("token") || req.headers.get("x-api-token");
     console.log('[AGENCIES] API Token present:', !!apiToken);
+    console.log('[AGENCIES] Token from token header:', !!req.headers.get("token"));
+    console.log('[AGENCIES] Token from x-api-token header:', !!req.headers.get("x-api-token"));
 
     if (!apiToken) {
       console.error('[AGENCIES] Missing token header');
