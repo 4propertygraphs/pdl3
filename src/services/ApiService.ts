@@ -6,12 +6,9 @@ class ApiService {
     private edgeFunctionsUrl: string;
     private supabaseAnonKey: string;
 
-    private stefanmarsToken: string;
-
     constructor() {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         this.supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-        this.stefanmarsToken = import.meta.env.VITE_STEFANMARS_API_TOKEN;
         this.edgeFunctionsUrl = `${supabaseUrl}/functions/v1`;
 
         const baseURL = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost:3000/api';
@@ -216,7 +213,8 @@ class ApiService {
 
     // Add method to refresh agencies
     refreshAgencies() {
-        console.log('[API SERVICE] Stefanmars Token:', this.stefanmarsToken ? 'present' : 'missing');
+        const token = this.getAuthToken();
+        console.log('[API SERVICE] Auth Token:', token ? 'present' : 'missing');
         console.log('[API SERVICE] Edge Functions URL:', this.edgeFunctionsUrl);
         console.log('[API SERVICE] Full URL:', `${this.edgeFunctionsUrl}/agencies?sync=true`);
 
@@ -224,7 +222,7 @@ class ApiService {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'token': this.stefanmarsToken
+                'token': token
             },
             params: {
                 sync: 'true'
