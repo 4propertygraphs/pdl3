@@ -233,13 +233,22 @@ function Agencies() {
         if (!window.confirm("Are you sure you want to refresh all agencies from the database?")) {
             return;
         }
+        console.log('[AGENCIES] Starting refresh...');
         setRefreshError(null); // clear previous error
         setRefreshAgenciesLoading(true);
         try {
-            await apiService.refreshAgencies();
+            console.log('[AGENCIES] Calling apiService.refreshAgencies()...');
+            const response = await apiService.refreshAgencies();
+            console.log('[AGENCIES] Refresh response:', response.data);
             // After successful refresh from database, reload the agencies
+            console.log('[AGENCIES] Reloading agencies list...');
             await refreshAgencies();
+            console.log('[AGENCIES] Refresh completed successfully');
         } catch (error: any) {
+            console.error('[AGENCIES] Error during refresh:', error);
+            console.error('[AGENCIES] Error response:', error?.response);
+            console.error('[AGENCIES] Error status:', error?.response?.status);
+            console.error('[AGENCIES] Error data:', error?.response?.data);
             if (error?.response?.status === 429) {
                 setRefreshError("A refresh is already running. Please wait for it to finish.");
             } else {

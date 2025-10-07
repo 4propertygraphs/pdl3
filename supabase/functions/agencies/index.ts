@@ -22,7 +22,10 @@ Deno.serve(async (req: Request) => {
     );
 
     const apiToken = req.headers.get("x-api-token");
+    console.log('[AGENCIES] API Token present:', !!apiToken);
+
     if (!apiToken) {
+      console.error('[AGENCIES] Missing x-api-token header');
       return new Response(
         JSON.stringify({ error: "Missing x-api-token header" }),
         {
@@ -37,8 +40,10 @@ Deno.serve(async (req: Request) => {
 
     const url = new URL(req.url);
     const sync = url.searchParams.get("sync");
+    console.log('[AGENCIES] Sync parameter:', sync);
 
     if (sync === 'true') {
+      console.log('[AGENCIES] Starting sync from stefanmars API...');
       const response = await fetch("https://api.stefanmars.nl/api/agencies", {
         method: "GET",
         headers: {
@@ -46,9 +51,17 @@ Deno.serve(async (req: Request) => {
         },
       });
 
+      console.log('[AGENCIES] Stefanmars API response status:', response.status);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[AGENCIES] Failed to fetch from stefanmars API:', response.status, errorText);
         return new Response(
-          JSON.stringify({ error: "Failed to fetch from 4PM API" }),
+          JSON.stringify({
+            error: "Failed to fetch from stefanmars API",
+            status: response.status,
+            details: errorText
+          }),
           {
             status: response.status,
             headers: {
@@ -60,6 +73,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const apiAgencies = await response.json();
+      console.log('[AGENCIES] Received agencies count:', apiAgencies.length);
 
       for (const agency of apiAgencies) {
         const agencyData = {
@@ -87,9 +101,12 @@ Deno.serve(async (req: Request) => {
           });
 
         if (upsertError) {
-          console.error('Error upserting agency:', upsertError);
+          console.error('[AGENCIES] Error upserting agency:', agency.name, upsertError);
+        } else {
+          console.log('[AGENCIES] Successfully upserted agency:', agency.name);
         }
       }
+      console.log('[AGENCIES] Sync completed successfully');
     }
 
     const { data: agencies, error: agenciesError } = await supabaseClient
