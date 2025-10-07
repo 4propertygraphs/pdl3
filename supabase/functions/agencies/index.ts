@@ -21,13 +21,22 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
+    // Log ALL headers
+    console.log('[AGENCIES] ======================');
+    console.log('[AGENCIES] All request headers:');
+    req.headers.forEach((value, key) => {
+      console.log(`[AGENCIES]   ${key}: ${value}`);
+    });
+    console.log('[AGENCIES] ======================');
+
     const apiToken = req.headers.get("token") || req.headers.get("x-api-token");
     console.log('[AGENCIES] API Token present:', !!apiToken);
-    console.log('[AGENCIES] Token from token header:', !!req.headers.get("token"));
-    console.log('[AGENCIES] Token from x-api-token header:', !!req.headers.get("x-api-token"));
+    console.log('[AGENCIES] API Token value:', apiToken);
+    console.log('[AGENCIES] Token from "token" header:', req.headers.get("token"));
+    console.log('[AGENCIES] Token from "x-api-token" header:', req.headers.get("x-api-token"));
 
     if (!apiToken) {
-      console.error('[AGENCIES] Missing token header');
+      console.error('[AGENCIES] Missing token header - NO TOKEN FOUND IN REQUEST');
       return new Response(
         JSON.stringify({ error: "Missing token header" }),
         {
@@ -49,17 +58,17 @@ Deno.serve(async (req: Request) => {
       const response = await fetch("https://api.stefanmars.nl/api/agencies", {
         method: "GET",
         headers: {
-          "token": apiToken,
+          'Content-Type': 'application/json',
+          'token': apiToken,
         },
       });
 
-      console.log('[AGENCIES] Stefanmars API response status:', response.status);
-
       if (!response.ok) {
+        console.error('[AGENCIES] Stefanmars API error:', response.status, response.statusText);
         const errorText = await response.text();
-        console.error('[AGENCIES] Failed to fetch from stefanmars API:', response.status, errorText);
+        console.error('[AGENCIES] Error details:', errorText);
         return new Response(
-          JSON.stringify({
+          JSON.stringify({ 
             error: "Failed to fetch from stefanmars API",
             status: response.status,
             details: errorText
@@ -74,53 +83,105 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const apiAgencies = await response.json();
-      console.log('[AGENCIES] Received agencies count:', apiAgencies.length);
+      const agencies = await response.json();
+      console.log('[AGENCIES] Fetched agencies count:', agencies.length);
 
-      for (const agency of apiAgencies) {
-        const agencyData = {
-          unique_key: agency.unique_key,
-          name: agency.name || '',
-          address: agency.address || '',
-          city: agency.city || '',
-          county: agency.county || '',
-          phone: agency.phone || '',
-          email: agency.email || '',
-          website: agency.website || '',
-          logo_url: agency.logo_url || '',
-          description: agency.description || '',
-          primary_source: agency.primary_source || '',
-          myhome_key: agency.myhome_key || '',
-          acquaint_key: agency.acquaint_key || '',
-          daft_key: agency.daft_key || '',
-        };
+      // First, fetch all existing agencies to check for unique_key matches
+      const { data: existingAgencies, error: fetchError } = await supabaseClient
+        .from('agencies')
+        .select('id, unique_key');
 
-        const { error: upsertError } = await supabaseClient
-          .from('agencies')
-          .upsert(agencyData, {
-            onConflict: 'unique_key',
-            ignoreDuplicates: false,
-          });
+      if (fetchError) {
+        console.error('[AGENCIES] Error fetching existing agencies:', fetchError);
+      }
 
-        if (upsertError) {
-          console.error('[AGENCIES] Error upserting agency:', agency.name, upsertError);
+      const existingKeys = new Map((existingAgencies || []).map(a => [a.unique_key, a.id]));
+      console.log('[AGENCIES] Existing unique_keys:', Array.from(existingKeys.keys()));
+
+      // Process agencies one by one to handle duplicates
+      let inserted = 0;
+      let updated = 0;
+      let errors = 0;
+
+      for (const agency of agencies) {
+        const existingId = existingKeys.get(agency.unique_key);
+        
+        if (existingId) {
+          // Update existing agency
+          const { error: updateError } = await supabaseClient
+            .from('agencies')
+            .update({
+              name: agency.name,
+              address: agency.address,
+              lat: agency.lat,
+              long: agency.long,
+              logo: agency.logo,
+              properties_total: agency.properties_total || 0,
+              website: agency.website,
+              phone: agency.phone,
+              areacode: agency.areacode,
+              type: agency.type,
+            })
+            .eq('id', existingId);
+
+          if (updateError) {
+            console.error(`[AGENCIES] Error updating agency ${agency.unique_key}:`, updateError);
+            errors++;
+          } else {
+            updated++;
+          }
         } else {
-          console.log('[AGENCIES] Successfully upserted agency:', agency.name);
+          // Insert new agency
+          const { error: insertError } = await supabaseClient
+            .from('agencies')
+            .insert({
+              name: agency.name,
+              unique_key: agency.unique_key,
+              address: agency.address,
+              lat: agency.lat,
+              long: agency.long,
+              logo: agency.logo,
+              properties_total: agency.properties_total || 0,
+              website: agency.website,
+              phone: agency.phone,
+              areacode: agency.areacode,
+              type: agency.type,
+            });
+
+          if (insertError) {
+            console.error(`[AGENCIES] Error inserting agency ${agency.unique_key}:`, insertError);
+            errors++;
+          } else {
+            inserted++;
+            existingKeys.set(agency.unique_key, 0); // Add to tracking
+          }
         }
       }
-      console.log('[AGENCIES] Sync completed successfully');
-    }
 
-    const { data: agencies, error: agenciesError } = await supabaseClient
-      .from('agencies')
-      .select('*')
-      .order('name');
+      console.log(`[AGENCIES] Sync complete: ${inserted} inserted, ${updated} updated, ${errors} errors`);
 
-    if (agenciesError) {
+      // Return the synced agencies from database
+      const { data: syncedAgencies, error: finalError } = await supabaseClient
+        .from('agencies')
+        .select('*')
+        .order('name');
+
+      if (finalError) {
+        console.error('[AGENCIES] Error fetching synced agencies:', finalError);
+        throw finalError;
+      }
+
       return new Response(
-        JSON.stringify({ error: agenciesError.message }),
+        JSON.stringify({ 
+          agencies: syncedAgencies,
+          sync_stats: {
+            inserted,
+            updated,
+            errors,
+            total: syncedAgencies?.length || 0
+          }
+        }),
         {
-          status: 500,
           headers: {
             ...corsHeaders,
             "Content-Type": "application/json",
@@ -129,14 +190,31 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    return new Response(JSON.stringify(agencies || []), {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
-    });
+    // Regular fetch (no sync)
+    console.log('[AGENCIES] Fetching agencies from database...');
+    const { data: agencies, error } = await supabaseClient
+      .from('agencies')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      console.error('[AGENCIES] Error fetching agencies:', error);
+      throw error;
+    }
+
+    console.log('[AGENCIES] Returning agencies count:', agencies?.length || 0);
+
+    return new Response(
+      JSON.stringify(agencies),
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
   } catch (error) {
+    console.error('[AGENCIES] Unexpected error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {

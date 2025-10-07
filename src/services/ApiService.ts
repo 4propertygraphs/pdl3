@@ -214,16 +214,24 @@ class ApiService {
     // Add method to refresh agencies
     refreshAgencies() {
         const token = this.getAuthToken();
-        console.log('[API SERVICE] Auth Token:', token ? 'present' : 'missing');
+        console.log('[API SERVICE] ======================');
+        console.log('[API SERVICE] Auth Token from localStorage:', token);
+        console.log('[API SERVICE] Token present?:', token ? 'YES' : 'NO');
+        console.log('[API SERVICE] Token value:', token);
         console.log('[API SERVICE] Edge Functions URL:', this.edgeFunctionsUrl);
         console.log('[API SERVICE] Full URL:', `${this.edgeFunctionsUrl}/agencies?sync=true`);
 
+        const headers = {
+            'apikey': this.supabaseAnonKey,
+            'Authorization': `Bearer ${this.supabaseAnonKey}`,
+            'token': token || ''
+        };
+
+        console.log('[API SERVICE] Headers being sent:', JSON.stringify(headers, null, 2));
+        console.log('[API SERVICE] ======================');
+
         return axios.get(`${this.edgeFunctionsUrl}/agencies`, {
-            headers: {
-                'apikey': this.supabaseAnonKey,
-                'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'token': token
-            },
+            headers,
             params: {
                 sync: 'true'
             },
