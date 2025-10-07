@@ -3,8 +3,12 @@ import { Agency } from '../interfaces/Models';
 
 class ApiService {
     private api: AxiosInstance;
+    private edgeFunctionsUrl: string;
 
     constructor() {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        this.edgeFunctionsUrl = `${supabaseUrl}/functions/v1`;
+
         const baseURL = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost:3000/api';
         this.api = axios.create({
             baseURL,
@@ -36,7 +40,7 @@ class ApiService {
 
     getProperties(key: string) {
         const token = this.getAuthToken();
-        return this.api.get(ApiService.urls.properties(), {
+        return axios.get(`${this.edgeFunctionsUrl}/properties`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             },
@@ -48,7 +52,7 @@ class ApiService {
 
     getAgencies() {
         const token = this.getAuthToken();
-        return this.api.get(ApiService.urls.agencies(), {
+        return axios.get(`${this.edgeFunctionsUrl}/agencies`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -72,10 +76,7 @@ class ApiService {
     }
 
     login(email: string, password: string) {
-        // Use root URL for login endpoint by removing /api from baseURL
-        const baseURL = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost:3000/api';
-        const rootURL = baseURL.replace('/api', '');
-        return axios.post(rootURL + ApiService.urls.login(), { email, password });
+        return axios.post(`${this.edgeFunctionsUrl}/login`, { email, password });
     }
 
 
