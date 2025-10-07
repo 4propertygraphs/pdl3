@@ -214,9 +214,14 @@ class ApiService {
     // Add method to refresh agencies
     refreshAgencies() {
         const token = this.getAuthToken();
-        return this.api.post('/agencies/refresh', {}, {
+        return axios.get(`${this.edgeFunctionsUrl}/agencies`, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'apikey': this.supabaseAnonKey,
+                'Authorization': `Bearer ${this.supabaseAnonKey}`,
+                'x-api-token': token
+            },
+            params: {
+                sync: 'true'
             }
         });
     }
