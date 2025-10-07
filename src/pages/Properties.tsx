@@ -15,7 +15,8 @@ type FilterType = 'status' | 'propertymarket'; // Changed from 'type' to 'proper
 
 // Add a Property type definition at the top level of the component
 interface Property {
-  Id: number;
+  id: number;
+  Id?: number;
   ParentId?: number;
   Address: string;
   Propertymarket: string;
@@ -191,17 +192,17 @@ function Properties() {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedProperties(properties.map(property => property.Id));
+      setSelectedProperties(properties.map(property => property.id || property.Id));
     } else {
       setSelectedProperties([]);
     }
   };
 
-  const handleSelectProperty = (Id: number) => {
+  const handleSelectProperty = (id: number) => {
     setSelectedProperties(prevSelected =>
-      prevSelected.includes(Id)
-        ? prevSelected.filter(propertyId => propertyId !== Id)
-        : [...prevSelected, Id]
+      prevSelected.includes(id)
+        ? prevSelected.filter(propertyId => propertyId !== id)
+        : [...prevSelected, id]
     );
   };
 
@@ -658,7 +659,7 @@ function Properties() {
 
       // Debug: log all ids from both sources
       console.log('--- Daft Compare Debug ---');
-      console.log('originalProperties:', originalProperties.map((p: any) => p.Id || p.adId));
+      console.log('originalProperties:', originalProperties.map((p: any) => p.id || p.Id || p.adId));
       console.log('daftProperties:', daftProperties);
       if (!Array.isArray(daftProperties) || daftProperties.length === 0) {
         // Try to show error from response if available
@@ -680,7 +681,7 @@ function Properties() {
         if (id == null) return '';
         return String(id).replace(/^0+/, '');
       };
-      const originalIds = originalProperties.map((p: any) => normalizeId(p.Id || p.adId));
+      const originalIds = originalProperties.map((p: any) => normalizeId(p.id || p.Id || p.adId));
       const daftIds = daftProperties.map((p: any) => normalizeId(p.Id || p.adId));
       console.log('normalized originalProperties:', originalIds);
       console.log('normalized daftProperties:', daftIds);
@@ -827,6 +828,7 @@ function Properties() {
 
                         return {
                           ...formattedProperty,
+                          id: property.id || property.Id,
                           Pics: Array.isArray(property.Pics)
                             ? property.Pics.length
                             : (property.Pics && typeof property.Pics === 'object')
@@ -836,7 +838,7 @@ function Properties() {
                         };
                       })}
                       columns={columns}
-                      keyField="Id"
+                      keyField="id"
                       onRowClick={row => {
                         const { __originalPics, ...rest } = row;
                         setSelectedProperty({ ...rest, Pics: __originalPics });
