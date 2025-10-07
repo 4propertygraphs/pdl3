@@ -48,6 +48,7 @@ Deno.serve(async (req: Request) => {
     const response = await fetch("https://api.stefanmars.nl/api/properties", {
       method: "GET",
       headers: {
+        "token": apiToken,
         "key": key,
       },
     });
