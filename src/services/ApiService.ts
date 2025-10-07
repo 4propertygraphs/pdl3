@@ -46,7 +46,7 @@ class ApiService {
 
 
     getProperties(key: string) {
-        const token = this.getAuthToken();
+        const token = this.getStefanmarsToken();
         return axios.get(`${this.edgeFunctionsUrl}/properties`, {
             headers: {
                 'apikey': this.supabaseAnonKey,
@@ -60,7 +60,7 @@ class ApiService {
     }
 
     getAgencies(sync: boolean = true) {
-        const token = this.getAuthToken();
+        const token = this.getStefanmarsToken();
         return axios.get(`${this.edgeFunctionsUrl}/agencies`, {
             headers: {
                 'apikey': this.supabaseAnonKey,
@@ -100,7 +100,7 @@ class ApiService {
 
 
     getMyHome(apiKey: string, Listreff: string) {
-        const token = this.getAuthToken();
+        const token = this.getStefanmarsToken();
         return axios.get(`${this.edgeFunctionsUrl}/myhome`, {
             headers: {
                 'apikey': this.supabaseAnonKey,
@@ -115,7 +115,7 @@ class ApiService {
     }
 
     getDaft(apiKey: string, Listreff: string) {
-        const token = this.getAuthToken();
+        const token = this.getStefanmarsToken();
         return axios.get(`${this.edgeFunctionsUrl}/daft`, {
             headers: {
                 'apikey': this.supabaseAnonKey,
@@ -130,7 +130,7 @@ class ApiService {
     }
 
     GetAcquaint(apiKey: string, Listreff: string) {
-        const token = this.getAuthToken();
+        const token = this.getStefanmarsToken();
         return axios.get(`${this.edgeFunctionsUrl}/acquaint`, {
             headers: {
                 'apikey': this.supabaseAnonKey,
@@ -153,7 +153,7 @@ class ApiService {
         });
     }
     GetFieldMappings() {
-        const token = this.getAuthToken();
+        const token = this.getStefanmarsToken();
         return axios.get(`${this.edgeFunctionsUrl}/field-mappings`, {
             headers: {
                 'apikey': this.supabaseAnonKey,
@@ -165,7 +165,7 @@ class ApiService {
 
     // Add Field Mapping CRUD
     addFieldMapping(data: any) {
-        const token = this.getAuthToken();
+        const token = this.getStefanmarsToken();
         return axios.post(`${this.edgeFunctionsUrl}/field-mappings`, data, {
             headers: {
                 'apikey': this.supabaseAnonKey,
@@ -176,7 +176,7 @@ class ApiService {
     }
 
     updateFieldMapping(id: number, data: any) {
-        const token = this.getAuthToken();
+        const token = this.getStefanmarsToken();
         return axios.put(`${this.edgeFunctionsUrl}/field-mappings/${id}`, data, {
             headers: {
                 'apikey': this.supabaseAnonKey,
@@ -187,7 +187,7 @@ class ApiService {
     }
 
     deleteFieldMapping(id: number) {
-        const token = this.getAuthToken();
+        const token = this.getStefanmarsToken();
         return axios.delete(`${this.edgeFunctionsUrl}/field-mappings/${id}`, {
             headers: {
                 'apikey': this.supabaseAnonKey,
