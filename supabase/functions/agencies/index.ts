@@ -112,15 +112,19 @@ Deno.serve(async (req: Request) => {
             .from('agencies')
             .update({
               name: agency.name,
-              address: agency.address,
-              lat: agency.lat,
-              long: agency.long,
+              office_name: agency.office_name,
+              address1: agency.address1,
+              address2: agency.address2,
               logo: agency.logo,
-              properties_total: agency.properties_total || 0,
-              website: agency.website,
-              phone: agency.phone,
-              areacode: agency.areacode,
-              type: agency.type,
+              site_name: agency.site_name,
+              acquaint_site_prefix: agency.acquaint_site_prefix,
+              myhome_group_id: agency.myhome_group_id,
+              myhome_api_key: agency.myhome_api_key,
+              daft_api_key: agency.daft_api_key,
+              fourpm_branch_id: agency.fourpm_branch_id,
+              ghl_id: agency.ghl_id,
+              whmcs_id: agency.whmcs_id,
+              total_properties: agency.properties_total || 0,
             })
             .eq('id', existingId);
 
@@ -137,15 +141,19 @@ Deno.serve(async (req: Request) => {
             .insert({
               name: agency.name,
               unique_key: agency.unique_key,
-              address: agency.address,
-              lat: agency.lat,
-              long: agency.long,
+              office_name: agency.office_name,
+              address1: agency.address1,
+              address2: agency.address2,
               logo: agency.logo,
-              properties_total: agency.properties_total || 0,
-              website: agency.website,
-              phone: agency.phone,
-              areacode: agency.areacode,
-              type: agency.type,
+              site_name: agency.site_name,
+              acquaint_site_prefix: agency.acquaint_site_prefix,
+              myhome_group_id: agency.myhome_group_id,
+              myhome_api_key: agency.myhome_api_key,
+              daft_api_key: agency.daft_api_key,
+              fourpm_branch_id: agency.fourpm_branch_id,
+              ghl_id: agency.ghl_id,
+              whmcs_id: agency.whmcs_id,
+              total_properties: agency.properties_total || 0,
             });
 
           if (insertError) {
