@@ -45,13 +45,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const apiUrl = new URL("https://api.stefanmars.nl/api/properties");
-    apiUrl.searchParams.set("key", key);
-
-    const response = await fetch(apiUrl.toString(), {
+    const response = await fetch("https://api.stefanmars.nl/api/properties", {
       method: "GET",
       headers: {
-        "Authorization": `Bearer ${apiToken}`,
+        "key": key,
       },
     });
 

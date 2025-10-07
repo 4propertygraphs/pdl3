@@ -32,7 +32,7 @@ Deno.serve(async (req: Request) => {
     const response = await fetch("https://api.stefanmars.nl/api/agencies", {
       method: "GET",
       headers: {
-        "Authorization": `Bearer ${apiToken}`,
+        "token": apiToken,
       },
     });
 
