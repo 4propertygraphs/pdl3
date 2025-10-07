@@ -46,7 +46,7 @@ class ApiService {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'x-api-token': token
+                'token': token
             },
             params: {
                 key: key
@@ -60,7 +60,7 @@ class ApiService {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'x-api-token': token
+                'token': token
             },
             params: {
                 sync: sync ? 'true' : 'false'
@@ -100,7 +100,7 @@ class ApiService {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'x-api-token': token
+                'token': token
             },
             params: {
                 key: apiKey,
@@ -115,7 +115,7 @@ class ApiService {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'x-api-token': token
+                'token': token
             },
             params: {
                 key: apiKey,
@@ -130,7 +130,7 @@ class ApiService {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'x-api-token': token
+                'token': token
             },
             params: {
                 key: apiKey,
@@ -153,7 +153,7 @@ class ApiService {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'x-api-token': token
+                'token': token
             }
         });
     }
@@ -165,7 +165,7 @@ class ApiService {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'x-api-token': token
+                'token': token
             }
         });
     }
@@ -176,7 +176,7 @@ class ApiService {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'x-api-token': token
+                'token': token
             }
         });
     }
@@ -187,7 +187,7 @@ class ApiService {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'x-api-token': token
+                'token': token
             }
         });
     }
@@ -222,7 +222,7 @@ class ApiService {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'x-api-token': token
+                'token': token
             },
             params: {
                 sync: 'true'
