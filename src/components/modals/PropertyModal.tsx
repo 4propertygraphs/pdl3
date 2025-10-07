@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import Modal from '../Modal';
-import apiService from '../../services/ApiService';
 
 interface PropertyDetailsModalProps {
     show: boolean;
@@ -67,17 +66,7 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
     }, [property, apiKey, acquiantKey]);
 
     useEffect(() => {
-        const fetchFieldMappings = async () => {
-            try {
-                const response = await apiService.GetFieldMappings();
-                setFieldMappings(response.data);
-            } catch (error) {
-                console.error('Error fetching field mappings:', error);
-                setFieldMappings([]);
-            }
-        };
-
-        fetchFieldMappings();
+        setFieldMappings([]);
     }, []);
 
 
