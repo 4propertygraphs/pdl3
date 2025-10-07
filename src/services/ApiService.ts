@@ -35,9 +35,13 @@ class ApiService {
 
 
     getProperties(key: string) {
+        const token = this.getAuthToken();
         return this.api.get(ApiService.urls.properties(), {
             headers: {
-                'key': key
+                'Authorization': `Bearer ${token}`
+            },
+            params: {
+                key: key
             }
         });
     }
@@ -46,7 +50,7 @@ class ApiService {
         const token = this.getAuthToken();
         return this.api.get(ApiService.urls.agencies(), {
             headers: {
-                'token': token
+                'Authorization': `Bearer ${token}`
             }
         });
     }
@@ -62,7 +66,7 @@ class ApiService {
     verifyToken(token: string) {
         return this.api.get(ApiService.urls.verifyToken(), {
             headers: {
-                'token': token
+                'Authorization': `Bearer ${token}`
             }
         });
     }
@@ -91,7 +95,7 @@ class ApiService {
 
         return this.api.put(ApiService.urls.UpdateAgency() + id, data, {
             headers: {
-                'token': token
+                'Authorization': `Bearer ${token}`
             }
         });
     }
@@ -99,7 +103,7 @@ class ApiService {
         const token = this.getAuthToken();
         return this.api.get(ApiService.urls.field_mappings(), {
             headers: {
-                'token': token
+                'Authorization': `Bearer ${token}`
             }
         });
     }
@@ -109,7 +113,7 @@ class ApiService {
         const token = this.getAuthToken();
         return this.api.post(ApiService.urls.field_mappings(), data, {
             headers: {
-                'token': token
+                'Authorization': `Bearer ${token}`
             }
         });
     }
@@ -118,7 +122,7 @@ class ApiService {
         const token = this.getAuthToken();
         return this.api.put(`${ApiService.urls.field_mappings()}/${id}`, data, {
             headers: {
-                'token': token
+                'Authorization': `Bearer ${token}`
             }
         });
     }
@@ -127,7 +131,7 @@ class ApiService {
         const token = this.getAuthToken();
         return this.api.delete(`${ApiService.urls.field_mappings()}/${id}`, {
             headers: {
-                'token': token
+                'Authorization': `Bearer ${token}`
             }
         });
     }
@@ -137,7 +141,7 @@ class ApiService {
         const token = this.getAuthToken();
         return this.api.post('/agencies/recount-properties', {}, {
             headers: {
-                'token': token
+                'Authorization': `Bearer ${token}`
             }
         });
     }
@@ -146,7 +150,7 @@ class ApiService {
         const token = this.getAuthToken();
         return this.api.post(`/agencies/${id}/recount-properties`, {}, {
             headers: {
-                'token': token
+                'Authorization': `Bearer ${token}`
             }
         });
     }
@@ -156,7 +160,7 @@ class ApiService {
         const token = this.getAuthToken();
         return this.api.post('/agencies/refresh', {}, {
             headers: {
-                'token': token
+                'Authorization': `Bearer ${token}`
             }
         });
     }
@@ -176,7 +180,7 @@ class ApiService {
         const token = this.getAuthToken();
         return this.api.post(ApiService.urls.agencies(), data, {
             headers: {
-                'token': token
+                'Authorization': `Bearer ${token}`
             }
         });
     }
