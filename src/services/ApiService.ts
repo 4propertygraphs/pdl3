@@ -44,6 +44,7 @@ class ApiService {
         const token = this.getAuthToken();
         return axios.get(`${this.edgeFunctionsUrl}/properties`, {
             headers: {
+                'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
                 'x-api-token': token
             },
@@ -57,6 +58,7 @@ class ApiService {
         const token = this.getAuthToken();
         return axios.get(`${this.edgeFunctionsUrl}/agencies`, {
             headers: {
+                'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
                 'x-api-token': token
             }
@@ -82,6 +84,7 @@ class ApiService {
     login(email: string, password: string) {
         return axios.post(`${this.edgeFunctionsUrl}/login`, { email, password }, {
             headers: {
+                'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`
             }
         });
