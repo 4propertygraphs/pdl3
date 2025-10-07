@@ -13,10 +13,18 @@ function Login() {
 
         try {
             const response = await apiService.login(email, password); // Gebruik apiService hier
+            console.log('[LOGIN] Full response:', response.data);
             const token = response.data.token;
+            console.log('[LOGIN] Token received:', token);
 
+            if (!token) {
+                console.error('[LOGIN] No token in response!');
+                setError('Login failed - no token received');
+                return;
+            }
 
             localStorage.setItem('token', token);
+            console.log('[LOGIN] Token saved to localStorage');
             window.location.href = `${basePath}`;
         } catch (err) {
             console.error('Login failed:', err);
