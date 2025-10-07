@@ -4,9 +4,11 @@ import { Agency } from '../interfaces/Models';
 class ApiService {
     private api: AxiosInstance;
     private edgeFunctionsUrl: string;
+    private supabaseAnonKey: string;
 
     constructor() {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        this.supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
         this.edgeFunctionsUrl = `${supabaseUrl}/functions/v1`;
 
         const baseURL = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost:3000/api';
@@ -42,7 +44,8 @@ class ApiService {
         const token = this.getAuthToken();
         return axios.get(`${this.edgeFunctionsUrl}/properties`, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}`,
+                'apikey': this.supabaseAnonKey
             },
             params: {
                 key: key
@@ -54,7 +57,8 @@ class ApiService {
         const token = this.getAuthToken();
         return axios.get(`${this.edgeFunctionsUrl}/agencies`, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}`,
+                'apikey': this.supabaseAnonKey
             }
         });
     }
@@ -76,7 +80,11 @@ class ApiService {
     }
 
     login(email: string, password: string) {
-        return axios.post(`${this.edgeFunctionsUrl}/login`, { email, password });
+        return axios.post(`${this.edgeFunctionsUrl}/login`, { email, password }, {
+            headers: {
+                'apikey': this.supabaseAnonKey
+            }
+        });
     }
 
 
