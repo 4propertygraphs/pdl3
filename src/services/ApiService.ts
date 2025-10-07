@@ -59,7 +59,7 @@ class ApiService {
         });
     }
 
-    getAgencies(sync: boolean = true) {
+    getAgencies(sync: boolean = false) {
         const token = this.getStefanmarsToken();
         return axios.get(`${this.edgeFunctionsUrl}/agencies`, {
             headers: {
