@@ -16,6 +16,20 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    const apiToken = req.headers.get("x-api-token");
+    if (!apiToken) {
+      return new Response(
+        JSON.stringify({ error: "Missing x-api-token header" }),
+        {
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -44,7 +58,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: agency, error: agencyError } = await supabaseClient
       .from('agencies')
-      .select('id')
+      .select('*')
       .eq('unique_key', key)
       .maybeSingle();
 
@@ -59,6 +73,53 @@ Deno.serve(async (req: Request) => {
           },
         }
       );
+    }
+
+    const response = await fetch("https://api.stefanmars.nl/api/properties", {
+      method: "GET",
+      headers: {
+        "token": apiToken,
+        "key": key,
+      },
+    });
+
+    if (!response.ok) {
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch properties from 4PM" }),
+        {
+          status: response.status,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    const apiData = await response.json();
+
+    for (const prop of apiData) {
+      await supabaseClient
+        .from('properties')
+        .upsert({
+          agency_id: agency.id,
+          external_id: prop.ListReff,
+          house_location: prop.Address,
+          house_price: prop.Price,
+          house_bedrooms: prop.Bedrooms,
+          house_bathrooms: prop.Bathrooms,
+          house_mt_squared: prop.Size,
+          house_extra_info_1: prop.PropertyType,
+          house_extra_info_2: prop.BER,
+          house_extra_info_3: prop.AddressOnly,
+          house_extra_info_4: prop.SaleType,
+          agency_agent_name: prop.AgentName,
+          agency_name: prop.AgencyName || agency.name,
+          images_url_house: Array.isArray(prop.FileName) ? prop.FileName.join(',') : prop.FileName,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'external_id,agency_id'
+        });
     }
 
     const { data: properties, error: propertiesError } = await supabaseClient
