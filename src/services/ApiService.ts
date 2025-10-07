@@ -214,6 +214,10 @@ class ApiService {
     // Add method to refresh agencies
     refreshAgencies() {
         const token = this.getAuthToken();
+        console.log('[API SERVICE] Token:', token ? 'present' : 'missing');
+        console.log('[API SERVICE] Edge Functions URL:', this.edgeFunctionsUrl);
+        console.log('[API SERVICE] Full URL:', `${this.edgeFunctionsUrl}/agencies?sync=true`);
+
         return axios.get(`${this.edgeFunctionsUrl}/agencies`, {
             headers: {
                 'apikey': this.supabaseAnonKey,
@@ -222,7 +226,8 @@ class ApiService {
             },
             params: {
                 sync: 'true'
-            }
+            },
+            timeout: 300000 // 5 minute timeout
         });
     }
 
