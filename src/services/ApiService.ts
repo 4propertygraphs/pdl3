@@ -45,7 +45,7 @@ class ApiService {
 
 
 
-    getProperties(key: string) {
+    getProperties(key: string, sync: boolean = false) {
         const token = this.getStefanmarsToken();
         return axios.get(`${this.edgeFunctionsUrl}/properties`, {
             headers: {
@@ -54,9 +54,14 @@ class ApiService {
                 'token': token
             },
             params: {
-                key: key
+                key: key,
+                sync: sync ? 'true' : 'false'
             }
         });
+    }
+
+    refreshProperties(key: string) {
+        return this.getProperties(key, true);
     }
 
     getAgencies(sync: boolean = false) {

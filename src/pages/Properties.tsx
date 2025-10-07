@@ -503,28 +503,27 @@ function Properties() {
 
 
   const refreshProperties = async () => {
-    setIsLoading(true); // Set loading state to true
+    setIsLoading(true);
     try {
-      console.log('Refreshing properties with agencyKey:', agencyKey); // Debug log
-      const propertiesResponse = await apiService.getProperties(agencyKey || '');
+      console.log('Refreshing properties with agencyKey:', agencyKey);
+      const propertiesResponse = await apiService.refreshProperties(agencyKey || '');
 
-      // Transform properties - set New Home for those with ParentId
       const transformedProperties = propertiesResponse.data.map((property: Property) => {
         if (property.ParentId) {
           return {
             ...property,
-            Propertymarket: 'New Home' // Replace existing Propertymarket value
+            Propertymarket: 'New Home'
           };
         }
         return property;
       });
 
-      setOriginalProperties(transformedProperties); // Update original properties with transformed data
-      setProperties(transformedProperties); // Update displayed properties with transformed data
+      setOriginalProperties(transformedProperties);
+      setProperties(transformedProperties);
     } catch (error) {
       console.error('Error refreshing properties:', error);
     } finally {
-      setIsLoading(false); // Set loading state to false
+      setIsLoading(false);
     }
   };
 
