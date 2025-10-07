@@ -240,9 +240,22 @@ function Agencies() {
             console.log('[AGENCIES] Calling apiService.refreshAgencies()...');
             const response = await apiService.refreshAgencies();
             console.log('[AGENCIES] Refresh response:', response.data);
-            // After successful refresh from database, reload the agencies
-            console.log('[AGENCIES] Reloading agencies list...');
-            await refreshAgencies();
+
+            // Handle new response structure with agencies array
+            const responseData = response.data;
+            const agenciesData = responseData.agencies || responseData || [];
+            const syncStats = responseData.sync_stats;
+
+            console.log('[AGENCIES] Agencies count:', agenciesData.length);
+            if (syncStats) {
+                console.log('[AGENCIES] Sync stats:', syncStats);
+            }
+
+            // Update state with new agencies
+            setAgencies(agenciesData);
+            setFilteredAgencies(agenciesData);
+            localStorage.setItem('agencies', JSON.stringify(agenciesData));
+
             console.log('[AGENCIES] Refresh completed successfully');
         } catch (error: any) {
             console.error('[AGENCIES] Error during refresh:', error);
