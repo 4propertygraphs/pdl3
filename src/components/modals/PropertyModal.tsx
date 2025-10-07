@@ -38,59 +38,22 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
             try {
                 if (property?.ListReff) {
                     if (apiKey) {
-                        try {
-                            let listReff = property.ListReff;
-                            const prefix = property.acquaintsiteprefix;
-
-                            if (listReff.includes(prefix)) {
-                                listReff = listReff.replace(prefix, '');
-                            } else {
-                                listReff = listReff.replace(/[A-Za-z]/g, '');
-                            }
-
-                            property.ListReff = listReff;
-
-                            const myhome = await apiService.getMyHome(apiKey, property.ListReff);
-                            setAdditionalInfo(myhome.data.Property);
-
-                        } catch (error: any) {
-                            if (error.response?.data?.message) {
-                                setAdditionalInfo({ message: error.response.data.message });
-                            } else {
-                                setAdditionalInfo({ message: 'Failed to fetch MyHome data.' });
-                            }
-                        }
+                        setAdditionalInfo({ message: 'MyHome integration not yet migrated.' });
+                        // TODO: Migrate MyHome API to Edge Functions
                     } else {
                         setAdditionalInfo({ message: 'MyHome API key is missing.' });
                     }
 
                     if (daft_api_key) {
-                        try {
-                            const daft = await apiService.getDaft(daft_api_key, property.ListReff);
-                            setDaftInfo(daft.data);
-                            console.log('Daft data:', daft.data);
-                        } catch (error: any) {
-                            if (error.response?.data?.message) {
-                                setDaftInfo({ message: error.response.data.message });
-                            } else {
-                                setDaftInfo({ message: 'Failed to fetch Daft data.' });
-                            }
-                        }
+                        setDaftInfo({ message: 'Daft integration not yet migrated.' });
+                        // TODO: Migrate Daft API to Edge Functions
                     } else {
                         setDaftInfo({ message: 'Daft API key is missing.' });
                     }
 
                     if (acquiantKey) {
-                        try {
-                            const acquaint = await apiService.GetAcquaint(acquiantKey, property.ListReff);
-                            setAcquaintInfo(acquaint.data);
-                        } catch (error: any) {
-                            if (error.response?.data?.error) {
-                                setAcquaintInfo({ message: error.response.data.error });
-                            } else {
-                                setAcquaintInfo({ message: error.response.data.message });
-                            }
-                        }
+                        setAcquaintInfo({ message: 'Acquaint integration not yet migrated.' });
+                        // TODO: Migrate Acquaint API to Edge Functions
                     } else {
                         setAcquaintInfo({ message: 'Acquaint API key is missing.' });
                     }
@@ -110,6 +73,7 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                 setFieldMappings(response.data);
             } catch (error) {
                 console.error('Error fetching field mappings:', error);
+                setFieldMappings([]);
             }
         };
 
