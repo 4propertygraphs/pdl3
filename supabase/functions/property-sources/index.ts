@@ -128,8 +128,11 @@ Deno.serve(async (req: Request) => {
           if (data && Object.keys(data).length > 0) {
             results.myhome = data;
           } else {
-            results.myhome = { message: "Property not found on MyHome" };
+            results.myhome = { message: "Property not found on MyHome (ListReff may not match MyHome ID)" };
           }
+        } else if (response.status === 404) {
+          // 404 means property doesn't exist with this ID on MyHome
+          results.myhome = { message: "Property not found on MyHome (ListReff may not match MyHome ID)" };
         } else {
           results.errors.myhome = `HTTP ${response.status}`;
         }
