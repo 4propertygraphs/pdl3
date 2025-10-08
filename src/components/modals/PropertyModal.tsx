@@ -384,7 +384,7 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
         let sourceMap = [
             { title: 'FindAHome', key: 'propertydrive', data: property, primaryKey: null },
             { title: 'MyHome', key: 'myhome', data: additionalInfo, primaryKey: 'myhome' },
-            { title: 'Acquaint', key: 'acquaint_crm', data: acquaintInfo, primaryKey: 'acquaint' },
+            { title: 'Acquaint', key: 'acquaint_crm', data: acquaintInfo, primaryKey: 'acquaint_crm' },
             { title: 'Daft', key: 'daft', data: daftInfo, primaryKey: 'daft' },
         ];
 
