@@ -365,6 +365,49 @@ function Agencies() {
         }
     };
 
+    // Add sync properties functionality
+    const [syncPropertiesLoading, setSyncPropertiesLoading] = useState(false);
+    const [syncProgress, setSyncProgress] = useState<{ current: number; total: number } | null>(null);
+    const [syncError, setSyncError] = useState<string | null>(null);
+
+    const handleSyncProperties = async () => {
+        if (!window.confirm("This will sync properties from the API for all agencies. This may take several minutes. Continue?")) {
+            return;
+        }
+
+        setSyncError(null);
+        setSyncPropertiesLoading(true);
+        setSyncProgress({ current: 0, total: agencies.length });
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (let i = 0; i < agencies.length; i++) {
+            const agency = agencies[i];
+            setSyncProgress({ current: i + 1, total: agencies.length });
+
+            try {
+                await apiService.refreshProperties(agency.unique_key);
+                successCount++;
+            } catch (error) {
+                console.error(`Error syncing properties for ${agency.name}:`, error);
+                errorCount++;
+            }
+        }
+
+        setSyncPropertiesLoading(false);
+        setSyncProgress(null);
+
+        if (errorCount > 0) {
+            setSyncError(`Synced ${successCount} agencies successfully, ${errorCount} failed.`);
+        } else {
+            alert(`Successfully synced properties for all ${successCount} agencies!`);
+        }
+
+        // Refresh the agency list to update counts
+        await refreshAgencies();
+    };
+
     // Only define handleSearchChange if logged in
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchText(e.target.value); // Update search text
@@ -496,6 +539,24 @@ function Agencies() {
                                             ) : null}
                                             Refresh Agencies
                                         </button>
+
+                                        {/* Add button for syncing properties */}
+                                        <button
+                                            className="ml-4 px-2 py-1 text-xs rounded bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200 hover:bg-orange-200 dark:hover:bg-orange-800"
+                                            onClick={handleSyncProperties}
+                                            disabled={syncPropertiesLoading}
+                                            title="Sync properties from API for all agencies"
+                                        >
+                                            {syncPropertiesLoading ? (
+                                                <span className="inline-block w-4 h-4 mr-1 align-middle border-2 border-orange-400 border-t-transparent rounded-full animate-spin"></span>
+                                            ) : null}
+                                            {syncProgress ? `Sync Properties (${syncProgress.current}/${syncProgress.total})` : 'Sync Properties'}
+                                        </button>
+
+                                        {/* Show sync error if present */}
+                                        {syncError && (
+                                            <span className="ml-4 text-xs text-red-500 font-normal">{syncError}</span>
+                                        )}
 
                                         {/* Replace this button to use createAgency modal type */}
                                         <button
