@@ -130,8 +130,11 @@ Deno.serve(async (req: Request) => {
           } else {
             results.myhome = { message: "Property not found on MyHome (ListReff may not match MyHome ID)" };
           }
-        } else if (response.status === 404) {
-          // 404 means property doesn't exist with this ID on MyHome
+        } else if (response.status === 404 || response.status === 500) {
+          // 404/500 typically means property doesn't exist with this ID on MyHome
+          // (MyHome API returns 404 for not found, but sometimes external API returns 500)
+          const errorBody = await response.text();
+          console.log(`MyHome API error ${response.status}:`, errorBody);
           results.myhome = { message: "Property not found on MyHome (ListReff may not match MyHome ID)" };
         } else {
           results.errors.myhome = `HTTP ${response.status}`;
