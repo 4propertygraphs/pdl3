@@ -63,12 +63,19 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                     // Set Daft data
                     if (data.daft) {
                         setDaftInfo(data.daft);
+                        console.log("Daft data loaded:", {
+                            hasDaftInfo: true,
+                            daftInfoKeys: Object.keys(data.daft).slice(0, 15)
+                        });
                     } else if (data.errors?.daft) {
                         setDaftInfo({ message: `Failed to load Daft data: ${data.errors.daft}` });
+                        console.log("Daft error:", data.errors.daft);
                     } else if (!daft_api_key) {
                         setDaftInfo({ message: 'Daft API key is missing.' });
+                        console.log("Daft: API key missing");
                     } else {
                         setDaftInfo({ message: 'No Daft data available.' });
+                        console.log("Daft: No data available");
                     }
 
                     // Set WordPress/4PM data (Acquaint)
