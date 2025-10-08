@@ -160,6 +160,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const apiProperties = await response.json();
+      console.log(`[PROPERTIES] Fetched ${apiProperties.length} properties from API`);
 
       for (const prop of apiProperties) {
         const propertyData = {
@@ -168,16 +169,16 @@ Deno.serve(async (req: Request) => {
           external_id: prop.ListReff || prop.Id?.toString(),
           house_location: prop.Address || '',
           house_price: prop.Price || '',
-          house_bedrooms: parseInt(prop.Bedrooms) || null,
-          house_bathrooms: parseInt(prop.Bathrooms) || null,
+          house_bedrooms: parseInt(prop.Beds) || parseInt(prop.Bedrooms) || null,
+          house_bathrooms: parseInt(prop.BathRooms) || parseInt(prop.Bathrooms) || null,
           house_mt_squared: prop.Size || '',
-          house_extra_info_1: prop.PropertyType || '',
+          house_extra_info_1: prop.Type || prop.PropertyType || '',
           house_extra_info_2: prop.BER || '',
           house_extra_info_3: prop.AddressOnly || prop.Address || '',
-          house_extra_info_4: prop.SaleType || '',
-          agency_agent_name: prop.AgentName || '',
+          house_extra_info_4: prop.Status || prop.SaleType || '',
+          agency_agent_name: prop.Agent || prop.AgentName || '',
           agency_name: agency.name,
-          images_url_house: Array.isArray(prop.FileName) ? prop.FileName.join(',') : (prop.FileName || ''),
+          images_url_house: Array.isArray(prop.Pics) ? prop.Pics.join(',') : (Array.isArray(prop.FileName) ? prop.FileName.join(',') : (prop.FileName || '')),
           updated_at: new Date().toISOString(),
         };
 
@@ -189,7 +190,7 @@ Deno.serve(async (req: Request) => {
           });
 
         if (upsertError) {
-          console.error('Error upserting property:', upsertError);
+          console.error('[PROPERTIES] Error upserting property to properties table:', upsertError);
         }
 
         // Also save to properties_data table with full raw data
@@ -270,7 +271,7 @@ Deno.serve(async (req: Request) => {
           price_term: prop.PriceTerm || '',
         };
 
-        const { error: detailUpsertError } = await supabaseClient
+        const { data: detailUpsertData, error: detailUpsertError } = await supabaseClient
           .from('properties_data')
           .upsert(propertyDetailData, {
             onConflict: 'agency_id,external_id',
@@ -278,9 +279,14 @@ Deno.serve(async (req: Request) => {
           });
 
         if (detailUpsertError) {
-          console.error('Error upserting property detail:', detailUpsertError);
+          console.error('[PROPERTIES] Error upserting property_data:', detailUpsertError);
+          console.error('[PROPERTIES] Failed property data:', JSON.stringify(propertyDetailData).substring(0, 500));
+        } else {
+          console.log(`[PROPERTIES] Successfully saved property_data: ${prop.Id || prop.ListReff}`);
         }
       }
+
+      console.log(`[PROPERTIES] Sync complete. Processed ${apiProperties.length} properties`);
     }
 
     const { data: properties, error: propertiesError } = await supabaseClient
