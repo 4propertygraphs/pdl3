@@ -27,8 +27,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Call MyHome API
-    const myhomeUrl = `https://agentapi.myhome.ie/property/${apiKey}/${propertyId}?format=json`;
+    // Call Stefanmars MyHome API proxy
+    const myhomeUrl = `https://api.stefanmars.nl/api/myhome?key=${apiKey}&id=${propertyId}`;
     const response = await fetch(myhomeUrl);
 
     if (!response.ok) {
