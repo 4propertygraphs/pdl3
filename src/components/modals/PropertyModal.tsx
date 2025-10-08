@@ -202,7 +202,10 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
     function isSourceActive(srcKey: string): boolean {
         if (srcKey === 'propertydrive') return true;
         if (srcKey === 'myhome') return !!apiKey && !additionalInfo?.message;
-        if (srcKey === 'acquaint_crm') return !!acquiantKey && !acquaintInfo?.message;
+        if (srcKey === 'acquaint_crm') {
+            // Acquaint uses 4PM/WordPress data, check if we have the unique key and valid data
+            return !!agencyUniqueKey && acquaintInfo && !acquaintInfo?.message;
+        }
         if (srcKey === 'daft') return !!daft_api_key && !daftInfo?.message;
         return false;
     }
