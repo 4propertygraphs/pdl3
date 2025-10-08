@@ -9,6 +9,8 @@ type FieldMapping = {
     propertydrive: string;
     daft: string;
     myhome: string;
+    wordpress: string;
+    order: number;
 };
 
 const emptyMapping: Omit<FieldMapping, 'id'> = {
@@ -16,7 +18,9 @@ const emptyMapping: Omit<FieldMapping, 'id'> = {
     acquaint_crm: '',
     propertydrive: '',
     daft: '',
-    myhome: ''
+    myhome: '',
+    wordpress: '',
+    order: 999
 };
 
 function FieldMappings() {
@@ -69,7 +73,9 @@ function FieldMappings() {
             acquaint_crm: mapping.acquaint_crm,
             propertydrive: mapping.propertydrive,
             daft: mapping.daft,
-            myhome: mapping.myhome
+            myhome: mapping.myhome,
+            wordpress: mapping.wordpress,
+            order: mapping.order
         });
         setAdding(false);
     };
@@ -142,11 +148,13 @@ function FieldMappings() {
                                     <table className="min-w-[600px] w-full bg-white dark:bg-gray-900 dark:text-gray-200 border">
                                         <thead className="dark:bg-gray-900 sticky top-0 z-20 border-b-2 border-purple-300 dark:border-gray-600">
                                             <tr>
+                                                <th className="border dark:border-gray-700 px-4 py-3 pt-5 dark:text-gray-200 bg-white dark:bg-gray-900 font-medium">Order</th>
                                                 <th className="border dark:border-gray-700 px-4 py-3 pt-5 dark:text-gray-200 bg-white dark:bg-gray-900 font-medium">Field Name</th>
                                                 <th className="border dark:border-gray-700 px-4 py-3 pt-5 dark:text-gray-200 bg-white dark:bg-gray-900 font-medium">Acquaint CRM</th>
                                                 <th className="border dark:border-gray-700 px-4 py-3 pt-5 dark:text-gray-200 bg-white dark:bg-gray-900 font-medium">PropertyDrive</th>
                                                 <th className="border dark:border-gray-700 px-4 py-3 pt-5 dark:text-gray-200 bg-white dark:bg-gray-900 font-medium">Daft</th>
                                                 <th className="border dark:border-gray-700 px-4 py-3 pt-5 dark:text-gray-200 bg-white dark:bg-gray-900 font-medium">MyHome</th>
+                                                <th className="border dark:border-gray-700 px-4 py-3 pt-5 dark:text-gray-200 bg-white dark:bg-gray-900 font-medium">WordPress</th>
                                                 <th className="border dark:border-gray-700 px-4 py-3 pt-5 dark:text-gray-200 bg-white dark:bg-gray-900 font-medium">Actions</th>
                                             </tr>
                                         </thead>
@@ -154,6 +162,16 @@ function FieldMappings() {
                                             {/* Inline add new row */}
                                             {adding && (
                                                 <tr>
+                                                    <td className="border dark:border-gray-700 px-2 py-1">
+                                                        <input
+                                                            name="order"
+                                                            type="number"
+                                                            placeholder="Order"
+                                                            value={form.order ?? ''}
+                                                            onChange={handleInputChange}
+                                                            className="p-2 border rounded dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 w-full"
+                                                        />
+                                                    </td>
                                                     <td className="border dark:border-gray-700 px-2 py-1">
                                                         <input
                                                             name="field_name"
@@ -201,6 +219,15 @@ function FieldMappings() {
                                                         />
                                                     </td>
                                                     <td className="border dark:border-gray-700 px-2 py-1">
+                                                        <input
+                                                            name="wordpress"
+                                                            placeholder="WordPress"
+                                                            value={form.wordpress ?? ''}
+                                                            onChange={handleInputChange}
+                                                            className="p-2 border rounded dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 w-full"
+                                                        />
+                                                    </td>
+                                                    <td className="border dark:border-gray-700 px-2 py-1">
                                                         <span
                                                             className="cursor-pointer text-purple-600 dark:text-purple-400 underline mr-4"
                                                             onClick={handleSubmit}
@@ -233,6 +260,15 @@ function FieldMappings() {
                                             {mappings.map((m) => (
                                                 editing && editing.id === m.id ? (
                                                     <tr key={m.id}>
+                                                        <td className="border dark:border-gray-700 px-2 py-1">
+                                                            <input
+                                                                name="order"
+                                                                type="number"
+                                                                value={form.order ?? ''}
+                                                                onChange={handleInputChange}
+                                                                className="p-2 border rounded dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 w-full"
+                                                            />
+                                                        </td>
                                                         <td className="border dark:border-gray-700 px-2 py-1">
                                                             <input
                                                                 name="field_name"
@@ -275,6 +311,14 @@ function FieldMappings() {
                                                             />
                                                         </td>
                                                         <td className="border dark:border-gray-700 px-2 py-1">
+                                                            <input
+                                                                name="wordpress"
+                                                                value={form.wordpress ?? ''}
+                                                                onChange={handleInputChange}
+                                                                className="p-2 border rounded dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 w-full"
+                                                            />
+                                                        </td>
+                                                        <td className="border dark:border-gray-700 px-2 py-1">
                                                             <span
                                                                 className="cursor-pointer text-purple-600 dark:text-purple-400 underline mr-4"
                                                                 onClick={handleSubmit}
@@ -305,11 +349,13 @@ function FieldMappings() {
                                                     </tr>
                                                 ) : (
                                                     <tr key={m.id}>
+                                                        <td className="border dark:border-gray-700 px-2 py-1 dark:text-gray-200">{m.order}</td>
                                                         <td className="border dark:border-gray-700 px-2 py-1 dark:text-gray-200">{m.field_name}</td>
                                                         <td className="border dark:border-gray-700 px-2 py-1 dark:text-gray-200">{m.acquaint_crm}</td>
                                                         <td className="border dark:border-gray-700 px-2 py-1 dark:text-gray-200">{m.propertydrive}</td>
                                                         <td className="border dark:border-gray-700 px-2 py-1 dark:text-gray-200">{m.daft}</td>
                                                         <td className="border dark:border-gray-700 px-2 py-1 dark:text-gray-200">{m.myhome}</td>
+                                                        <td className="border dark:border-gray-700 px-2 py-1 dark:text-gray-200">{m.wordpress}</td>
                                                         <td className="border dark:border-gray-700 px-2 py-1 dark:text-gray-200">
                                                             <span
                                                                 className="cursor-pointer text-purple-600 dark:text-purple-400 underline mr-4"
@@ -335,7 +381,7 @@ function FieldMappings() {
                                             ))}
                                             {mappings.length === 0 && !adding && (
                                                 <tr>
-                                                    <td colSpan={6} className="text-center py-4 text-gray-500 dark:text-gray-400">
+                                                    <td colSpan={8} className="text-center py-4 text-gray-500 dark:text-gray-400">
                                                         No field mappings found.
                                                     </td>
                                                 </tr>

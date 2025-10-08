@@ -29,7 +29,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await supabaseClient
         .from('field_mappings')
         .select('*')
-        .order('id', { ascending: true });
+        .order('order', { ascending: true });
 
       if (error) {
         return new Response(
@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
     // POST /field-mappings - Create new field mapping
     if (method === 'POST' && (path === '/field-mappings' || path.endsWith('/field-mappings'))) {
       const body = await req.json();
-      const { field_name, acquaint_crm, propertydrive, daft, myhome } = body;
+      const { field_name, acquaint_crm, propertydrive, daft, myhome, wordpress, order } = body;
 
       const { data, error } = await supabaseClient
         .from('field_mappings')
@@ -63,6 +63,8 @@ Deno.serve(async (req: Request) => {
           propertydrive: propertydrive || '',
           daft: daft || '',
           myhome: myhome || '',
+          wordpress: wordpress || '',
+          order: order || 999,
         }])
         .select()
         .single();
@@ -91,7 +93,7 @@ Deno.serve(async (req: Request) => {
     if (method === 'PUT' && putMatch) {
       const id = parseInt(putMatch[1]);
       const body = await req.json();
-      const { field_name, acquaint_crm, propertydrive, daft, myhome } = body;
+      const { field_name, acquaint_crm, propertydrive, daft, myhome, wordpress, order } = body;
 
       const { data, error } = await supabaseClient
         .from('field_mappings')
@@ -101,6 +103,8 @@ Deno.serve(async (req: Request) => {
           propertydrive: propertydrive || '',
           daft: daft || '',
           myhome: myhome || '',
+          wordpress: wordpress || '',
+          order: order !== undefined ? order : 999,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
