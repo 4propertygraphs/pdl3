@@ -910,16 +910,17 @@ function Properties() {
       {selectedProperty && (
         <PropertyDetailsModal
           show={showModal}
-          property={selectedProperty} // Pass the selected property
+          property={selectedProperty}
           onClose={handleCloseModal}
           onLogDetailsClick={handleLogDetailsClick}
           isLogModalOpen={isLogModalOpen}
           selectedLog={selectedLog}
           closeLogModal={closeLogModal}
-          apiKey={agency?.myhome_api_key} // Pass the MyHome API key
-          acquiantKey={agency?.acquaint_site_prefix} // Pass the AcquiantCustomer key
-          daft_api_key={agency?.daft_api_key} // Pass the Daft API key
-          primarySource={agency?.primary_source} // <-- Add this line
+          apiKey={agency?.myhome_api_key}
+          acquiantKey={agency?.acquaint_site_prefix}
+          daft_api_key={agency?.daft_api_key}
+          agencyUniqueKey={agency?.unique_key}
+          primarySource={agency?.primary_source}
         />
 
       )}

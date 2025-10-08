@@ -11,8 +11,9 @@ interface PropertyDetailsModalProps {
     selectedLog: string | null;
     closeLogModal: () => void;
     apiKey: string | null; // MyHome API key
-    acquiantKey: string | null; // AcquiantCustomer key
+    acquiantKey: string | null; // Acquaint site prefix
     daft_api_key: string | null; // Daft API key
+    agencyUniqueKey: string | null; // Agency unique key for 4PM/WordPress
     primarySource?: string | null;
 }
 
@@ -23,6 +24,7 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
     apiKey,
     acquiantKey,
     daft_api_key,
+    agencyUniqueKey,
     primarySource,
 }) => {
     const [additionalInfo, setAdditionalInfo] = useState<any | null>('Loading...');
@@ -42,7 +44,7 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                         property.ListReff,
                         daft_api_key || undefined,
                         apiKey || undefined,
-                        acquiantKey || undefined
+                        agencyUniqueKey || undefined
                     );
 
                     const data = response.data;
@@ -89,7 +91,7 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
         };
 
         fetchData();
-    }, [property, apiKey, acquiantKey, daft_api_key]);
+    }, [property, apiKey, acquiantKey, daft_api_key, agencyUniqueKey]);
 
     useEffect(() => {
         const fetchFieldMappings = async () => {
