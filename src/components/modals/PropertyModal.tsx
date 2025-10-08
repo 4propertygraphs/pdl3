@@ -62,6 +62,13 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                         errors: data.errors
                     });
 
+                    if (data.errors) {
+                        console.log("=== DETAILED ERRORS ===");
+                        if (data.errors.daft) console.log("Daft error:", data.errors.daft);
+                        if (data.errors.myhome) console.log("MyHome error:", data.errors.myhome);
+                        if (data.errors.wordpress) console.log("WordPress error:", data.errors.wordpress);
+                    }
+
                     // Set MyHome data
                     if (data.myhome) {
                         setAdditionalInfo(data.myhome);
