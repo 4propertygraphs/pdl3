@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Modal from '../Modal';
 import apiService from '../../services/ApiService';
+import { FaHome } from 'react-icons/fa';
 
 interface PropertyDetailsModalProps {
     show: boolean;
@@ -233,20 +234,19 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
     // Helper to check if a source is "active" (has API key and no error)
     function isSourceActive(srcKey: string): boolean {
         if (srcKey === 'propertydrive') return true;
-        if (srcKey === 'myhome') return !!apiKey && !additionalInfo?.message;
+        if (srcKey === 'myhome') {
+            // Check if we have the key and data is not just an error message object
+            return !!apiKey && additionalInfo && !(additionalInfo.message && Object.keys(additionalInfo).length === 1);
+        }
         if (srcKey === 'acquaint_crm') {
             // Acquaint uses 4PM/WordPress data, check if we have the unique key and valid data
-            const isActive = !!agencyUniqueKey && acquaintInfo && !acquaintInfo?.message;
-            console.log("Acquaint isSourceActive check:", {
-                agencyUniqueKey,
-                hasAcquaintInfo: !!acquaintInfo,
-                acquaintInfoMessage: acquaintInfo?.message,
-                isActive,
-                acquaintInfoKeys: acquaintInfo ? Object.keys(acquaintInfo).slice(0, 10) : []
-            });
+            const isActive = !!agencyUniqueKey && acquaintInfo && !(acquaintInfo.message && Object.keys(acquaintInfo).length === 1);
             return isActive;
         }
-        if (srcKey === 'daft') return !!daft_api_key && !daftInfo?.message;
+        if (srcKey === 'daft') {
+            // Check if we have the key and data is not just an error message object
+            return !!daft_api_key && daftInfo && !(daftInfo.message && Object.keys(daftInfo).length === 1);
+        }
         return false;
     }
 
@@ -413,6 +413,21 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
             );
         }
 
+        const getSourceIcon = (key: string) => {
+            switch (key) {
+                case 'daft':
+                    return <img src="/daft.jpg" alt="Daft" className="w-5 h-5 rounded" />;
+                case 'propertydrive':
+                    return <FaHome className="w-5 h-5 text-blue-600" />;
+                case 'myhome':
+                    return <img src="/myhome.png" alt="MyHome" className="w-5 h-5 rounded" />;
+                case 'acquaint_crm':
+                    return <img src="/acquaint.jpg" alt="Acquaint" className="w-5 h-5 rounded" />;
+                default:
+                    return <FaHome className="w-5 h-5 text-blue-600" />;
+            }
+        };
+
         let sourceMap = [
             { title: 'FindAHome', key: 'propertydrive', data: property, primaryKey: null },
             { title: 'MyHome', key: 'myhome', data: additionalInfo, primaryKey: 'myhome' },
@@ -527,11 +542,12 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                                         }}
                                     >
                                         <div className="flex flex-col items-start">
-                                            <span className="flex items-center">
+                                            <span className="flex items-center gap-2">
+                                                {getSourceIcon(src.key)}
                                                 <span className="underline">{src.title}</span>
                                                 {isPrimary && (
                                                     <span
-                                                        className="ml-2"
+                                                        className="ml-1"
                                                         title="Primary Source"
                                                         aria-label="Primary Source"
                                                     >
