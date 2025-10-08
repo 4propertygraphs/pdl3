@@ -27,13 +27,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Call Daft API (you'll need to implement the actual Daft API endpoint)
-    // For now, returning a placeholder
-    const daftResponse = await fetch(`https://api.daft.ie/v1/properties/${propertyId}`, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-      },
-    });
+    // Call Stefanmars Daft API proxy
+    const daftResponse = await fetch(`https://api.stefanmars.nl/api/daft?key=${apiKey}&id=${propertyId}`);
 
     if (!daftResponse.ok) {
       return new Response(
