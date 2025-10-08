@@ -81,12 +81,17 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                     }
 
                     // Set Daft data
-                    if (data.daft) {
+                    if (data.daft && !data.daft.message) {
+                        // Valid Daft data (not an error message object)
                         setDaftInfo(data.daft);
                         console.log("Daft data loaded:", {
                             hasDaftInfo: true,
                             daftInfoKeys: Object.keys(data.daft).slice(0, 15)
                         });
+                    } else if (data.daft?.message) {
+                        // API returned a message object (property not found, etc.)
+                        setDaftInfo({ message: data.daft.message });
+                        console.log("Daft message:", data.daft.message);
                     } else if (data.errors?.daft) {
                         setDaftInfo({ message: `Failed to load Daft data: ${data.errors.daft}` });
                         console.log("Daft error:", data.errors.daft);
