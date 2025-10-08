@@ -191,6 +191,34 @@ Deno.serve(async (req: Request) => {
         if (upsertError) {
           console.error('Error upserting property:', upsertError);
         }
+
+        // Also save to properties_data table with full raw data
+        const propertyDetailData = {
+          agency_id: agency.id,
+          external_id: prop.Id?.toString() || prop.ListReff,
+          source: prop.Source || agency.primary_source || 'unknown',
+          raw_data: prop,
+          address: prop.Address || prop.AddressOnly || '',
+          price: prop.Price || '',
+          beds: parseInt(prop.Beds) || parseInt(prop.Bedrooms) || null,
+          size: prop.Size || '',
+          size_in_acres: prop.SizeInAcres || '',
+          property_type: prop.Type || prop.PropertyType || '',
+          status: prop.Status || 'For Sale',
+          agent: prop.Agent || prop.AgentName || '',
+          pics: Array.isArray(prop.Pics) ? prop.Pics : (prop.Pics ? [prop.Pics] : []),
+        };
+
+        const { error: detailUpsertError } = await supabaseClient
+          .from('properties_data')
+          .upsert(propertyDetailData, {
+            onConflict: 'agency_id,external_id',
+            ignoreDuplicates: false,
+          });
+
+        if (detailUpsertError) {
+          console.error('Error upserting property detail:', detailUpsertError);
+        }
       }
     }
 
