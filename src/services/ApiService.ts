@@ -268,6 +268,23 @@ class ApiService {
             }
         });
     }
+
+    // Get all property sources data in one request
+    getPropertySources(listReff: string, daftKey?: string, myhomeKey?: string, fourpmKey?: string) {
+        const token = this.getStefanmarsToken();
+        const params = new URLSearchParams({ id: listReff });
+        if (daftKey) params.append('daft_key', daftKey);
+        if (myhomeKey) params.append('myhome_key', myhomeKey);
+        if (fourpmKey) params.append('fourpm_key', fourpmKey);
+
+        return axios.get(`${this.edgeFunctionsUrl}/property-sources?${params.toString()}`, {
+            headers: {
+                'apikey': this.supabaseAnonKey,
+                'Authorization': `Bearer ${this.supabaseAnonKey}`,
+                'token': token
+            }
+        });
+    }
 }
 
 const apiService = new ApiService();

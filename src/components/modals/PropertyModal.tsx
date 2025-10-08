@@ -37,47 +37,54 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
         const fetchData = async () => {
             try {
                 if (property?.ListReff) {
-                    // Fetch MyHome data
-                    if (apiKey) {
-                        try {
-                            const response = await apiService.getMyHome(apiKey, property.ListReff);
-                            setAdditionalInfo(response.data);
-                        } catch (error) {
-                            console.error('Error fetching MyHome data:', error);
-                            setAdditionalInfo({ message: 'Failed to load MyHome data.' });
-                        }
-                    } else {
+                    // Use new unified endpoint to fetch all data at once
+                    const response = await apiService.getPropertySources(
+                        property.ListReff,
+                        daft_api_key || undefined,
+                        apiKey || undefined,
+                        acquiantKey || undefined
+                    );
+
+                    const data = response.data;
+
+                    // Set MyHome data
+                    if (data.myhome) {
+                        setAdditionalInfo(data.myhome);
+                    } else if (data.errors?.myhome) {
+                        setAdditionalInfo({ message: `Failed to load MyHome data: ${data.errors.myhome}` });
+                    } else if (!apiKey) {
                         setAdditionalInfo({ message: 'MyHome API key is missing.' });
+                    } else {
+                        setAdditionalInfo({ message: 'No MyHome data available.' });
                     }
 
-                    // Fetch Daft data
-                    if (daft_api_key) {
-                        try {
-                            const response = await apiService.getDaft(daft_api_key, property.ListReff);
-                            setDaftInfo(response.data);
-                        } catch (error) {
-                            console.error('Error fetching Daft data:', error);
-                            setDaftInfo({ message: 'Failed to load Daft data.' });
-                        }
-                    } else {
+                    // Set Daft data
+                    if (data.daft) {
+                        setDaftInfo(data.daft);
+                    } else if (data.errors?.daft) {
+                        setDaftInfo({ message: `Failed to load Daft data: ${data.errors.daft}` });
+                    } else if (!daft_api_key) {
                         setDaftInfo({ message: 'Daft API key is missing.' });
+                    } else {
+                        setDaftInfo({ message: 'No Daft data available.' });
                     }
 
-                    // Fetch Acquaint data
-                    if (acquiantKey) {
-                        try {
-                            const response = await apiService.GetAcquaint(acquiantKey, property.ListReff);
-                            setAcquaintInfo(response.data);
-                        } catch (error) {
-                            console.error('Error fetching Acquaint data:', error);
-                            setAcquaintInfo({ message: 'Failed to load Acquaint data.' });
-                        }
+                    // Set WordPress/4PM data (Acquaint)
+                    if (data.wordpress) {
+                        setAcquaintInfo(data.wordpress);
+                    } else if (data.errors?.wordpress) {
+                        setAcquaintInfo({ message: `Failed to load WordPress data: ${data.errors.wordpress}` });
+                    } else if (!acquiantKey) {
+                        setAcquaintInfo({ message: 'WordPress API key is missing.' });
                     } else {
-                        setAcquaintInfo({ message: 'Acquaint API key is missing.' });
+                        setAcquaintInfo({ message: 'No WordPress data available.' });
                     }
                 }
             } catch (error) {
                 console.error('Error fetching property info:', error);
+                setAdditionalInfo({ message: 'Failed to load MyHome data.' });
+                setDaftInfo({ message: 'Failed to load Daft data.' });
+                setAcquaintInfo({ message: 'Failed to load WordPress data.' });
             }
         };
 
