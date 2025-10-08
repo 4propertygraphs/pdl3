@@ -39,6 +39,13 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
         const fetchData = async () => {
             try {
                 if (property?.ListReff) {
+                    console.log("=== FETCHING PROPERTY SOURCES ===", {
+                        ListReff: property.ListReff,
+                        hasDaftKey: !!daft_api_key,
+                        hasMyHomeKey: !!apiKey,
+                        hasAgencyKey: !!agencyUniqueKey
+                    });
+
                     // Use new unified endpoint to fetch all data at once
                     const response = await apiService.getPropertySources(
                         property.ListReff,
@@ -48,6 +55,12 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                     );
 
                     const data = response.data;
+                    console.log("=== PROPERTY SOURCES RESPONSE ===", {
+                        hasDaft: !!data.daft,
+                        hasMyHome: !!data.myhome,
+                        hasWordPress: !!data.wordpress,
+                        errors: data.errors
+                    });
 
                     // Set MyHome data
                     if (data.myhome) {
