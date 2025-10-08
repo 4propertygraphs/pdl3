@@ -204,7 +204,15 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
         if (srcKey === 'myhome') return !!apiKey && !additionalInfo?.message;
         if (srcKey === 'acquaint_crm') {
             // Acquaint uses 4PM/WordPress data, check if we have the unique key and valid data
-            return !!agencyUniqueKey && acquaintInfo && !acquaintInfo?.message;
+            const isActive = !!agencyUniqueKey && acquaintInfo && !acquaintInfo?.message;
+            console.log("Acquaint isSourceActive check:", {
+                agencyUniqueKey,
+                hasAcquaintInfo: !!acquaintInfo,
+                acquaintInfoMessage: acquaintInfo?.message,
+                isActive,
+                acquaintInfoKeys: acquaintInfo ? Object.keys(acquaintInfo).slice(0, 10) : []
+            });
+            return isActive;
         }
         if (srcKey === 'daft') return !!daft_api_key && !daftInfo?.message;
         return false;
