@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Modal from '../Modal';
 import apiService from '../../services/ApiService';
-import { FaHome, FaWordpress } from 'react-icons/fa';
+import { FaHome } from 'react-icons/fa';
 
 interface PropertyDetailsModalProps {
     show: boolean;
@@ -429,9 +429,9 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                 case 'daft':
                     return <img src="/daft.jpg" alt="Daft" className="w-5 h-5 rounded" />;
                 case 'propertydrive':
-                    return <FaHome className="w-5 h-5 text-blue-600" />;
+                    return <img src="/findahome.jpg" alt="FindAHome" className="w-5 h-5 rounded" />;
                 case 'wordpress':
-                    return <FaWordpress className="w-5 h-5 text-blue-600" />;
+                    return <img src="/wordpress.png" alt="WordPress" className="w-5 h-5 rounded" />;
                 case 'myhome':
                     return <img src="/myhome.png" alt="MyHome" className="w-5 h-5 rounded" />;
                 case 'acquaint_crm':
