@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Modal from '../Modal';
 import apiService from '../../services/ApiService';
-import { FaHome } from 'react-icons/fa';
+import { FaHome, FaWordpress } from 'react-icons/fa';
 
 interface PropertyDetailsModalProps {
     show: boolean;
@@ -29,6 +29,7 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
     primarySource,
 }) => {
     const [additionalInfo, setAdditionalInfo] = useState<any | null>('Loading...');
+    const [wordpressInfo, setWordpressInfo] = useState<any | null>('Loading...');
     const [acquaintInfo, setAcquaintInfo] = useState<any | null>('Loading...');
     const [daftInfo, setDaftInfo] = useState<any | null>('Loading...');
     const [fieldMappings, setFieldMappings] = useState<any[]>([]);
@@ -104,14 +105,19 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                         console.log("Daft: No data available");
                     }
 
-                    // Set WordPress/4PM data (Acquaint)
+                    // Set WordPress/4PM data
                     if (data.wordpress) {
+                        setWordpressInfo(data.wordpress);
+                        // Also set to Acquaint for backward compatibility
                         setAcquaintInfo(data.wordpress);
                     } else if (data.errors?.wordpress) {
+                        setWordpressInfo({ message: `Failed to load WordPress data: ${data.errors.wordpress}` });
                         setAcquaintInfo({ message: `Failed to load WordPress data: ${data.errors.wordpress}` });
-                    } else if (!acquiantKey) {
+                    } else if (!agencyUniqueKey) {
+                        setWordpressInfo({ message: 'WordPress API key is missing.' });
                         setAcquaintInfo({ message: 'WordPress API key is missing.' });
                     } else {
+                        setWordpressInfo({ message: 'No WordPress data available.' });
                         setAcquaintInfo({ message: 'No WordPress data available.' });
                     }
                 }
@@ -119,6 +125,7 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                 console.error('Error fetching property info:', error);
                 setAdditionalInfo({ message: 'Failed to load MyHome data.' });
                 setDaftInfo({ message: 'Failed to load Daft data.' });
+                setWordpressInfo({ message: 'Failed to load WordPress data.' });
                 setAcquaintInfo({ message: 'Failed to load WordPress data.' });
             }
         };
@@ -234,6 +241,10 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
     // Helper to check if a source is "active" (has API key and no error)
     function isSourceActive(srcKey: string): boolean {
         if (srcKey === 'propertydrive') return true;
+        if (srcKey === 'wordpress') {
+            // WordPress uses 4PM/WordPress data
+            return !!agencyUniqueKey && wordpressInfo && !(wordpressInfo.message && Object.keys(wordpressInfo).length === 1);
+        }
         if (srcKey === 'myhome') {
             // Check if we have the key and data is not just an error message object
             return !!apiKey && additionalInfo && !(additionalInfo.message && Object.keys(additionalInfo).length === 1);
@@ -419,6 +430,8 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                     return <img src="/daft.jpg" alt="Daft" className="w-5 h-5 rounded" />;
                 case 'propertydrive':
                     return <FaHome className="w-5 h-5 text-blue-600" />;
+                case 'wordpress':
+                    return <FaWordpress className="w-5 h-5 text-blue-600" />;
                 case 'myhome':
                     return <img src="/myhome.png" alt="MyHome" className="w-5 h-5 rounded" />;
                 case 'acquaint_crm':
@@ -430,6 +443,7 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
 
         let sourceMap = [
             { title: 'FindAHome', key: 'propertydrive', data: property, primaryKey: null },
+            { title: 'WordPress', key: 'wordpress', data: wordpressInfo, primaryKey: 'wordpress' },
             { title: 'MyHome', key: 'myhome', data: additionalInfo, primaryKey: 'myhome' },
             { title: 'Acquaint', key: 'acquaint_crm', data: acquaintInfo, primaryKey: 'acquaint_crm' },
             { title: 'Daft', key: 'daft', data: daftInfo, primaryKey: 'daft' },
@@ -444,6 +458,7 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
             if (!lastModifiedMapping) return null;
             let dataObj: any;
             if (srcKey === 'propertydrive') dataObj = property;
+            else if (srcKey === 'wordpress') dataObj = wordpressInfo;
             else if (srcKey === 'myhome') dataObj = additionalInfo;
             else if (srcKey === 'acquaint_crm') dataObj = acquaintInfo;
             else if (srcKey === 'daft') dataObj = daftInfo;
@@ -463,6 +478,7 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
             if (!createdMapping) return null;
             let dataObj: any;
             if (srcKey === 'propertydrive') dataObj = property;
+            else if (srcKey === 'wordpress') dataObj = wordpressInfo;
             else if (srcKey === 'myhome') dataObj = additionalInfo;
             else if (srcKey === 'acquaint_crm') dataObj = acquaintInfo;
             else if (srcKey === 'daft') dataObj = daftInfo;
