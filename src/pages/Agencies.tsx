@@ -230,7 +230,7 @@ function Agencies() {
 
     // Add a new function to handle the refresh agencies button click
     const handleRefreshAgencies = async () => {
-        if (!window.confirm("Are you sure you want to refresh all agencies from the database?")) {
+        if (!window.confirm("This will sync all agencies from the stefanmars API. This may download 515+ agencies and update your local database. Continue?")) {
             return;
         }
         console.log('[AGENCIES] Starting refresh...');
@@ -527,17 +527,17 @@ function Agencies() {
                                         {refreshError && (
                                             <span className="ml-4 text-xs text-red-500 font-normal">{refreshError}</span>
                                         )}
-                                        {/* Add button for refreshing agencies from database */}
+                                        {/* Add button for syncing agencies from API */}
                                         <button
                                             className="ml-4 px-2 py-1 text-xs rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800"
                                             onClick={handleRefreshAgencies}
                                             disabled={refreshAgenciesLoading}
-                                            title="Refresh agencies from database"
+                                            title="Sync all agencies from stefanmars API (downloads all 515+ agencies)"
                                         >
                                             {refreshAgenciesLoading ? (
                                                 <span className="inline-block w-4 h-4 mr-1 align-middle border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></span>
                                             ) : null}
-                                            Refresh Agencies
+                                            Sync All Agencies
                                         </button>
 
                                         {/* Add button for syncing properties */}
