@@ -9,13 +9,14 @@ const Sidebar: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const activePage = location.pathname;
-    const isLoggedIn = !!localStorage.getItem('token');
+    const isLoggedIn = !!localStorage.getItem('stefanmars_token');
 
 
     const handleLogout = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
         e.preventDefault();
         const confirmLogout = window.confirm("Are you sure you want to log out?");
         if (confirmLogout) {
+            localStorage.removeItem('stefanmars_token');
             localStorage.removeItem('token');
             navigate('/login', { replace: true });
         }
