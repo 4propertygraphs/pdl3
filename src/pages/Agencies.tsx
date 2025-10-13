@@ -25,7 +25,7 @@ function Agencies() {
     const [agencyLoading, setAgencyLoading] = useState<{ [agencyId: number]: boolean }>({}); // Track loading per agency
     const [agencyKeyInput, setAgencyKeyInput] = useState('');
     const [agencyKeyError, setAgencyKeyError] = useState('');
-    const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+    const [token, setToken] = useState<string | null>(localStorage.getItem('stefanmars_token'));
     const navigate = useNavigate();
 
     // Get base path for static assets from env (default to empty string if not set)
@@ -160,7 +160,7 @@ function Agencies() {
     }, [searchText, agencies, sourceFilters, filterLogic, agencyKeyInput, token]);
 
     useEffect(() => {
-        setToken(localStorage.getItem('token'));
+        setToken(localStorage.getItem('stefanmars_token'));
     }, []);
 
     // Only allow search if logged in or agency key is provided
