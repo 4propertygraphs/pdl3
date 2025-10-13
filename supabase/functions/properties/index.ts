@@ -193,7 +193,6 @@ Deno.serve(async (req: Request) => {
           console.error('[PROPERTIES] Error upserting property to properties table:', upsertError);
         }
 
-        // Also save to properties_data table with full raw data
         const propertyDetailData = {
           agency_id: agency.id,
           external_id: prop.Id?.toString() || prop.ListReff,

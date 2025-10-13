@@ -24,7 +24,6 @@ Deno.serve(async (req: Request) => {
     const path = url.pathname;
     const method = req.method;
 
-    // GET /field-mappings - Get all field mappings
     if (method === 'GET' && (path === '/field-mappings' || path.endsWith('/field-mappings'))) {
       const { data, error } = await supabaseClient
         .from('field_mappings')
@@ -50,7 +49,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // POST /field-mappings - Create new field mapping
     if (method === 'POST' && (path === '/field-mappings' || path.endsWith('/field-mappings'))) {
       const body = await req.json();
       const { field_name, acquaint_crm, propertydrive, daft, myhome, wordpress, order } = body;
@@ -88,7 +86,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // PUT /field-mappings/:id - Update field mapping
     const putMatch = path.match(/\/field-mappings\/(\d+)$/);
     if (method === 'PUT' && putMatch) {
       const id = parseInt(putMatch[1]);
@@ -130,7 +127,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // DELETE /field-mappings/:id - Delete field mapping
     const deleteMatch = path.match(/\/field-mappings\/(\d+)$/);
     if (method === 'DELETE' && deleteMatch) {
       const id = parseInt(deleteMatch[1]);
