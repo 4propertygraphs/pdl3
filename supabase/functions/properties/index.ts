@@ -9,30 +9,21 @@ const corsHeaders = {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     const apiToken = req.headers.get("token") || req.headers.get("x-api-token");
     if (!apiToken) {
-      return new Response(
-        JSON.stringify({ error: "Missing token header" }),
-        {
-          status: 401,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return new Response(JSON.stringify({ error: "Missing token header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const url = new URL(req.url);
@@ -40,16 +31,10 @@ Deno.serve(async (req: Request) => {
     const sync = url.searchParams.get("sync");
 
     if (!key) {
-      return new Response(
-        JSON.stringify({ error: "Missing key parameter" }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return new Response(JSON.stringify({ error: "Missing key parameter" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     let { data: agency, error: agencyError } = await supabaseClient
@@ -61,77 +46,43 @@ Deno.serve(async (req: Request) => {
     if (agencyError || !agency) {
       const agenciesResponse = await fetch("https://api.stefanmars.nl/api/agencies", {
         method: "GET",
-        headers: {
-          "token": apiToken,
-        },
+        headers: { "token": apiToken },
       });
 
       if (!agenciesResponse.ok) {
-        return new Response(
-          JSON.stringify({ error: "Failed to fetch agencies from 4PM API" }),
-          {
-            status: agenciesResponse.status,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        return new Response(JSON.stringify({ error: "Failed to fetch agencies from API" }), {
+          status: agenciesResponse.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       const apiAgencies = await agenciesResponse.json();
       const matchingAgency = apiAgencies.find((a: any) => a.unique_key === key);
 
       if (!matchingAgency) {
-        return new Response(
-          JSON.stringify({ error: "Agency not found in 4PM API" }),
-          {
-            status: 404,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        return new Response(JSON.stringify({ error: "Agency not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       const agencyData = {
         unique_key: matchingAgency.unique_key,
         name: matchingAgency.name || '',
-        address: matchingAgency.address || '',
-        city: matchingAgency.city || '',
-        county: matchingAgency.county || '',
-        phone: matchingAgency.phone || '',
-        email: matchingAgency.email || '',
-        website: matchingAgency.website || '',
-        logo_url: matchingAgency.logo_url || '',
-        description: matchingAgency.description || '',
         primary_source: matchingAgency.primary_source || '',
-        myhome_key: matchingAgency.myhome_key || '',
-        acquaint_key: matchingAgency.acquaint_key || '',
-        daft_key: matchingAgency.daft_key || '',
       };
 
       const { data: insertedAgency, error: insertError } = await supabaseClient
         .from('agencies')
-        .upsert(agencyData, {
-          onConflict: 'unique_key',
-          ignoreDuplicates: false,
-        })
+        .upsert(agencyData, { onConflict: 'unique_key' })
         .select()
         .single();
 
       if (insertError || !insertedAgency) {
-        return new Response(
-          JSON.stringify({ error: "Failed to insert agency", details: insertError?.message }),
-          {
-            status: 500,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        return new Response(JSON.stringify({ error: "Failed to insert agency" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       agency = insertedAgency;
@@ -140,152 +91,30 @@ Deno.serve(async (req: Request) => {
     if (sync === 'true') {
       const response = await fetch("https://api.stefanmars.nl/api/properties", {
         method: "GET",
-        headers: {
-          "token": apiToken,
-          "key": key,
-        },
+        headers: { "token": apiToken, "key": key },
       });
 
       if (!response.ok) {
-        return new Response(
-          JSON.stringify({ error: "Failed to fetch from 4PM API" }),
-          {
-            status: response.status,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        return new Response(JSON.stringify({ error: "Failed to fetch properties" }), {
+          status: response.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       const apiProperties = await response.json();
-      console.log(`[PROPERTIES] Fetched ${apiProperties.length} properties from API`);
-
       for (const prop of apiProperties) {
-        const propertyData = {
+        await supabaseClient.from('properties').upsert({
           agency_id: agency.id,
-          source: prop.Source || agency.primary_source || 'unknown',
+          source: prop.Source || 'unknown',
           external_id: prop.ListReff || prop.Id?.toString(),
           house_location: prop.Address || '',
           house_price: prop.Price || '',
-          house_bedrooms: parseInt(prop.Beds) || parseInt(prop.Bedrooms) || null,
-          house_bathrooms: parseInt(prop.BathRooms) || parseInt(prop.Bathrooms) || null,
-          house_mt_squared: prop.Size || '',
-          house_extra_info_1: prop.Type || prop.PropertyType || '',
-          house_extra_info_2: prop.BER || '',
-          house_extra_info_3: prop.AddressOnly || prop.Address || '',
-          house_extra_info_4: prop.Status || prop.SaleType || '',
-          agency_agent_name: prop.Agent || prop.AgentName || '',
+          house_bedrooms: parseInt(prop.Beds) || null,
+          house_bathrooms: parseInt(prop.BathRooms) || null,
           agency_name: agency.name,
-          images_url_house: Array.isArray(prop.Pics) ? prop.Pics.join(',') : (Array.isArray(prop.FileName) ? prop.FileName.join(',') : (prop.FileName || '')),
           updated_at: new Date().toISOString(),
-        };
-
-        const { error: upsertError } = await supabaseClient
-          .from('properties')
-          .upsert(propertyData, {
-            onConflict: 'agency_id,external_id',
-            ignoreDuplicates: false,
-          });
-
-        if (upsertError) {
-          console.error('[PROPERTIES] Error upserting property to properties table:', upsertError);
-        }
-
-        const propertyDetailData = {
-          agency_id: agency.id,
-          external_id: prop.Id?.toString() || prop.ListReff,
-          source: prop.Source || agency.primary_source || 'unknown',
-          raw_data: prop,
-          address: prop.Address || prop.AddressOnly || '',
-          price: prop.Price || '',
-          beds: parseInt(prop.Beds) || parseInt(prop.Bedrooms) || null,
-          size: prop.Size || '',
-          size_in_acres: prop.SizeInAcres || '',
-          property_type: prop.Type || prop.PropertyType || '',
-          status: prop.Status || 'For Sale',
-          agent: prop.Agent || prop.AgentName || '',
-          pics: Array.isArray(prop.Pics) ? prop.Pics : (prop.Pics ? [prop.Pics] : []),
-          primary_image: prop.PrimaryImage || '',
-          short_description: prop.ShortDescription || '',
-          description: prop.Desc || '',
-          ber: prop.BER || '',
-          ber_no: prop.BERNo || '',
-          epi: prop.EPI || '',
-          agent_id: prop.AgentId || null,
-          agent_photo: prop.AgentPhoto || '',
-          agent_qualification: prop.AgentQualification || '',
-          agent_phone: prop.AgentPhoneNumber || '',
-          agent_email: prop.Email || '',
-          logo: prop.Logo || '',
-          office_id: prop.OfficeId || null,
-          office_name: prop.Office || '',
-          office_address: prop.OfficeAddress || '',
-          office_phone: prop.Phone || '',
-          office_mobile: prop.Mobile || '',
-          office_psra_no: prop.OfficePSRANo || '',
-          accommodation: prop.Accommodation || '',
-          directions: prop.Directions || '',
-          solicitor: prop.Solicitor || '',
-          gps_latitude: prop.GPS?.Latitude || null,
-          gps_longitude: prop.GPS?.Longitude || null,
-          gps_zoom: prop.GPS?.Zoom || null,
-          tags: Array.isArray(prop.Tags) ? prop.Tags : [],
-          views: Array.isArray(prop.Views) ? prop.Views : [],
-          pdfs: Array.isArray(prop.Pdfs) ? prop.Pdfs : [],
-          tours: Array.isArray(prop.Tours) ? prop.Tours : [],
-          floors: Array.isArray(prop.Floors) ? prop.Floors : [],
-          living_type: prop.LivingType || '',
-          pics_count: prop.PicsCount || 0,
-          list_reff: prop.ListReff || '',
-          country_name: prop.CountryName || '',
-          district_name: prop.DistrictName || '',
-          county_city_name: prop.CountyCityName || '',
-          eircode: prop.Eircode || '',
-          postcode: prop.PostCode || '',
-          bathrooms: parseInt(prop.BathRooms) || null,
-          is_featured: prop.isFeaturedProperty || false,
-          price_in_decimal: parseFloat(prop.PriceInDecimal) || null,
-          control_rule: prop.ControlRule || '',
-          selling_type: prop.SellingType || '',
-          property_market: prop.Propertymarket || '',
-          has_related_properties: prop.HasRelatedProperties || false,
-          related_properties: prop.RelatedProperties || '',
-          parent_id: prop.ParentId || '',
-          viewing_details: prop.ViewingDetails || '',
-          amenities: prop.Amenities || '',
-          prop_categories: Array.isArray(prop.PropCategories) ? prop.PropCategories : [],
-          completed_date: prop.Completeddate || '',
-          auction_date: prop.AuctionDate || '',
-          auction_address: prop.AuctionAddress || '',
-          agency_domain: prop.AgencyDomain || '',
-          acquaint_site_prefix: prop.acquaintsiteprefix || '',
-          acquaint_site_id: prop.acquaintsiteid || '',
-          feed_to: prop.FeedTo || '',
-          disclaimer: prop.Disclaimer || '',
-          min_price: parseFloat(prop.minprice) || null,
-          max_price: parseFloat(prop.maxprice) || null,
-          hide_price: prop.HidePrice || false,
-          price_term: prop.PriceTerm || '',
-        };
-
-        const { data: detailUpsertData, error: detailUpsertError } = await supabaseClient
-          .from('properties_data')
-          .upsert(propertyDetailData, {
-            onConflict: 'agency_id,external_id',
-            ignoreDuplicates: false,
-          });
-
-        if (detailUpsertError) {
-          console.error('[PROPERTIES] Error upserting property_data:', detailUpsertError);
-          console.error('[PROPERTIES] Failed property data:', JSON.stringify(propertyDetailData).substring(0, 500));
-        } else {
-          console.log(`[PROPERTIES] Successfully saved property_data: ${prop.Id || prop.ListReff}`);
-        }
+        }, { onConflict: 'agency_id,external_id' });
       }
-
-      console.log(`[PROPERTIES] Sync complete. Processed ${apiProperties.length} properties`);
     }
 
     const { data: properties, error: propertiesError } = await supabaseClient
@@ -295,55 +124,20 @@ Deno.serve(async (req: Request) => {
       .order('updated_at', { ascending: false });
 
     if (propertiesError) {
-      return new Response(
-        JSON.stringify({ error: propertiesError.message }),
-        {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return new Response(JSON.stringify({ error: propertiesError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const transformedProperties = (properties || []).map((prop: any) => ({
-      Id: prop.id,
-      ListReff: prop.external_id,
-      Address: prop.house_location,
-      AddressOnly: prop.house_extra_info_3 || prop.house_location,
-      Price: prop.house_price,
-      Bedrooms: prop.house_bedrooms,
-      Bathrooms: prop.house_bathrooms,
-      Size: prop.house_mt_squared,
-      PropertyType: prop.house_extra_info_1,
-      BER: prop.house_extra_info_2,
-      SaleType: prop.house_extra_info_4,
-      AgentName: prop.agency_agent_name,
-      AgencyName: prop.agency_name,
-      FileName: prop.images_url_house ? prop.images_url_house.split(',') : [],
-      Status: 'For Sale',
-      Propertymarket: 'Residential Sales',
-      Modified: prop.updated_at,
-    }));
-
-    return new Response(JSON.stringify(transformedProperties), {
+    return new Response(JSON.stringify(properties || []), {
       status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

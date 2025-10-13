@@ -21,25 +21,11 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    console.log('[AGENCIES] ======================')
-    console.log('[AGENCIES] All request headers:');
-    req.headers.forEach((value, key) => {
-      console.log(`[AGENCIES]   ${key}: ${value}`);
-    });
-    console.log('[AGENCIES] ======================');
-
     const url = new URL(req.url);
     const sync = url.searchParams.get("sync");
-
     const apiToken = req.headers.get("token") || req.headers.get("x-api-token");
-    console.log('[AGENCIES] API Token present:', !!apiToken);
-    console.log('[AGENCIES] API Token value:', apiToken);
-    console.log('[AGENCIES] Token from "token" header:', req.headers.get("token"));
-    console.log('[AGENCIES] Token from "x-api-token" header:', req.headers.get("x-api-token"));
-    console.log('[AGENCIES] Sync requested:', sync);
 
     if (sync === 'true' && !apiToken) {
-      console.error('[AGENCIES] Missing token header for sync operation');
       return new Response(
         JSON.stringify({ error: "Missing token header for sync operation" }),
         {
@@ -51,10 +37,8 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
-    console.log('[AGENCIES] Sync parameter:', sync);
 
     if (sync === 'true') {
-      console.log('[AGENCIES] Starting sync from stefanmars API...');
       const response = await fetch("https://api.stefanmars.nl/api/agencies", {
         method: "GET",
         headers: {
@@ -76,12 +60,6 @@ Deno.serve(async (req: Request) => {
       }
 
       const apiAgencies = await response.json();
-      console.log(`[AGENCIES] Fetched ${apiAgencies.length} agencies from API`);
-
-      const syncedAgencies = [];
-      let inserted = 0;
-      let updated = 0;
-      let errors = 0;
 
       const existingKeys = new Map<string, number>();
       const { data: currentAgencies } = await supabaseClient
@@ -93,6 +71,10 @@ Deno.serve(async (req: Request) => {
           existingKeys.set(a.unique_key, a.id);
         });
       }
+
+      let inserted = 0;
+      let updated = 0;
+      let errors = 0;
 
       for (const apiAgency of apiAgencies) {
         try {
@@ -123,7 +105,6 @@ Deno.serve(async (req: Request) => {
               .eq('unique_key', apiAgency.unique_key);
 
             if (updateError) {
-              console.error(`[AGENCIES] Error updating agency ${agency.unique_key}:`, updateError);
               errors++;
             } else {
               updated++;
@@ -134,7 +115,6 @@ Deno.serve(async (req: Request) => {
               .insert(agency);
 
             if (insertError) {
-              console.error(`[AGENCIES] Error inserting agency ${agency.unique_key}:`, insertError);
               errors++;
             } else {
               inserted++;
@@ -142,12 +122,9 @@ Deno.serve(async (req: Request) => {
             }
           }
         } catch (agencyError) {
-          console.error('[AGENCIES] Error processing agency:', agencyError);
           errors++;
         }
       }
-
-      console.log(`[AGENCIES] Sync complete: ${inserted} inserted, ${updated} updated, ${errors} errors`);
 
       const { data: syncedAgencies, error: finalError } = await supabaseClient
         .from('agencies')
@@ -155,7 +132,6 @@ Deno.serve(async (req: Request) => {
         .order('name');
 
       if (finalError) {
-        console.error('[AGENCIES] Error fetching synced agencies:', finalError);
         throw finalError;
       }
 
@@ -178,18 +154,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('[AGENCIES] Fetching agencies from database...');
     const { data: agencies, error } = await supabaseClient
       .from('agencies')
       .select('*')
       .order('name');
 
     if (error) {
-      console.error('[AGENCIES] Error fetching agencies:', error);
       throw error;
     }
-
-    console.log('[AGENCIES] Returning agencies count:', agencies?.length || 0);
 
     return new Response(
       JSON.stringify(agencies),
@@ -201,7 +173,6 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error('[AGENCIES] Unexpected error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
