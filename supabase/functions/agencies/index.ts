@@ -4,7 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "content-type, authorization, x-client-info, apikey, token, x-api-token",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, apikey, x-api-token, token",
 };
 
 Deno.serve(async (req: Request) => {
@@ -21,24 +21,27 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    // Log ALL headers
-    console.log('[AGENCIES] ======================');
+    console.log('[AGENCIES] ======================')
     console.log('[AGENCIES] All request headers:');
     req.headers.forEach((value, key) => {
       console.log(`[AGENCIES]   ${key}: ${value}`);
     });
     console.log('[AGENCIES] ======================');
 
+    const url = new URL(req.url);
+    const sync = url.searchParams.get("sync");
+
     const apiToken = req.headers.get("token") || req.headers.get("x-api-token");
     console.log('[AGENCIES] API Token present:', !!apiToken);
     console.log('[AGENCIES] API Token value:', apiToken);
     console.log('[AGENCIES] Token from "token" header:', req.headers.get("token"));
     console.log('[AGENCIES] Token from "x-api-token" header:', req.headers.get("x-api-token"));
+    console.log('[AGENCIES] Sync requested:', sync);
 
-    if (!apiToken) {
-      console.error('[AGENCIES] Missing token header - NO TOKEN FOUND IN REQUEST');
+    if (sync === 'true' && !apiToken) {
+      console.error('[AGENCIES] Missing token header for sync operation');
       return new Response(
-        JSON.stringify({ error: "Missing token header" }),
+        JSON.stringify({ error: "Missing token header for sync operation" }),
         {
           status: 401,
           headers: {
@@ -48,9 +51,6 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
-
-    const url = new URL(req.url);
-    const sync = url.searchParams.get("sync");
     console.log('[AGENCIES] Sync parameter:', sync);
 
     if (sync === 'true') {
@@ -58,21 +58,13 @@ Deno.serve(async (req: Request) => {
       const response = await fetch("https://api.stefanmars.nl/api/agencies", {
         method: "GET",
         headers: {
-          'Content-Type': 'application/json',
-          'token': apiToken,
+          "token": apiToken,
         },
       });
 
       if (!response.ok) {
-        console.error('[AGENCIES] Stefanmars API error:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('[AGENCIES] Error details:', errorText);
         return new Response(
-          JSON.stringify({ 
-            error: "Failed to fetch from stefanmars API",
-            status: response.status,
-            details: errorText
-          }),
+          JSON.stringify({ error: "Failed to fetch from stefanmars API" }),
           {
             status: response.status,
             headers: {
@@ -83,92 +75,80 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const agencies = await response.json();
-      console.log('[AGENCIES] Fetched agencies count:', agencies.length);
+      const apiAgencies = await response.json();
+      console.log(`[AGENCIES] Fetched ${apiAgencies.length} agencies from API`);
 
-      // First, fetch all existing agencies to check for unique_key matches
-      const { data: existingAgencies, error: fetchError } = await supabaseClient
-        .from('agencies')
-        .select('id, unique_key');
-
-      if (fetchError) {
-        console.error('[AGENCIES] Error fetching existing agencies:', fetchError);
-      }
-
-      const existingKeys = new Map((existingAgencies || []).map(a => [a.unique_key, a.id]));
-      console.log('[AGENCIES] Existing unique_keys:', Array.from(existingKeys.keys()));
-
-      // Process agencies one by one to handle duplicates
+      const syncedAgencies = [];
       let inserted = 0;
       let updated = 0;
       let errors = 0;
 
-      for (const agency of agencies) {
-        const existingId = existingKeys.get(agency.unique_key);
-        
-        if (existingId) {
-          // Update existing agency
-          const { error: updateError } = await supabaseClient
-            .from('agencies')
-            .update({
-              name: agency.name,
-              office_name: agency.office_name,
-              address1: agency.address1,
-              address2: agency.address2,
-              logo: agency.logo,
-              site_name: agency.site_name,
-              acquaint_site_prefix: agency.acquaint_site_prefix,
-              myhome_group_id: agency.myhome_group_id,
-              myhome_api_key: agency.myhome_api_key,
-              daft_api_key: agency.daft_api_key,
-              fourpm_branch_id: agency.fourpm_branch_id,
-              ghl_id: agency.ghl_id,
-              whmcs_id: agency.whmcs_id,
-              total_properties: agency.properties_total || 0,
-            })
-            .eq('id', existingId);
+      const existingKeys = new Map<string, number>();
+      const { data: currentAgencies } = await supabaseClient
+        .from('agencies')
+        .select('unique_key, id');
 
-          if (updateError) {
-            console.error(`[AGENCIES] Error updating agency ${agency.unique_key}:`, updateError);
-            errors++;
-          } else {
-            updated++;
-          }
-        } else {
-          // Insert new agency
-          const { error: insertError } = await supabaseClient
-            .from('agencies')
-            .insert({
-              name: agency.name,
-              unique_key: agency.unique_key,
-              office_name: agency.office_name,
-              address1: agency.address1,
-              address2: agency.address2,
-              logo: agency.logo,
-              site_name: agency.site_name,
-              acquaint_site_prefix: agency.acquaint_site_prefix,
-              myhome_group_id: agency.myhome_group_id,
-              myhome_api_key: agency.myhome_api_key,
-              daft_api_key: agency.daft_api_key,
-              fourpm_branch_id: agency.fourpm_branch_id,
-              ghl_id: agency.ghl_id,
-              whmcs_id: agency.whmcs_id,
-              total_properties: agency.properties_total || 0,
-            });
+      if (currentAgencies) {
+        currentAgencies.forEach((a: any) => {
+          existingKeys.set(a.unique_key, a.id);
+        });
+      }
 
-          if (insertError) {
-            console.error(`[AGENCIES] Error inserting agency ${agency.unique_key}:`, insertError);
-            errors++;
+      for (const apiAgency of apiAgencies) {
+        try {
+          const agency = {
+            unique_key: apiAgency.unique_key,
+            name: apiAgency.name || '',
+            office_name: apiAgency.office_name || '',
+            address1: apiAgency.address1 || '',
+            address2: apiAgency.address2 || '',
+            logo: apiAgency.logo || '',
+            site_name: apiAgency.site_name || '',
+            site_prefix: apiAgency.site_prefix || '',
+            myhome_group_id: apiAgency.myhome_group_id || null,
+            fourpm_branch_id: apiAgency.fourpm_branch_id || null,
+            ghl_id: apiAgency.ghl_id || '',
+            whmcs_id: apiAgency.whmcs_id || '',
+            site: apiAgency.site || '',
+            acquaint_site_prefix: apiAgency.acquaint_site_prefix || '',
+            daft_api_key: apiAgency.daft_api_key || '',
+            myhome_api_key: apiAgency.myhome_api_key || '',
+            primary_source: apiAgency.primary_source || '',
+          };
+
+          if (existingKeys.has(apiAgency.unique_key)) {
+            const { error: updateError } = await supabaseClient
+              .from('agencies')
+              .update(agency)
+              .eq('unique_key', apiAgency.unique_key);
+
+            if (updateError) {
+              console.error(`[AGENCIES] Error updating agency ${agency.unique_key}:`, updateError);
+              errors++;
+            } else {
+              updated++;
+            }
           } else {
-            inserted++;
-            existingKeys.set(agency.unique_key, 0); // Add to tracking
+            const { error: insertError } = await supabaseClient
+              .from('agencies')
+              .insert(agency);
+
+            if (insertError) {
+              console.error(`[AGENCIES] Error inserting agency ${agency.unique_key}:`, insertError);
+              errors++;
+            } else {
+              inserted++;
+              existingKeys.set(agency.unique_key, 0);
+            }
           }
+        } catch (agencyError) {
+          console.error('[AGENCIES] Error processing agency:', agencyError);
+          errors++;
         }
       }
 
       console.log(`[AGENCIES] Sync complete: ${inserted} inserted, ${updated} updated, ${errors} errors`);
 
-      // Return the synced agencies from database
       const { data: syncedAgencies, error: finalError } = await supabaseClient
         .from('agencies')
         .select('*')
@@ -198,7 +178,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Regular fetch (no sync)
     console.log('[AGENCIES] Fetching agencies from database...');
     const { data: agencies, error } = await supabaseClient
       .from('agencies')

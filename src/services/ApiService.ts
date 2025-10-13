@@ -65,12 +65,15 @@ class ApiService {
     }
 
     getAgencies(sync: boolean = false) {
-        const token = this.getStefanmarsToken();
+        const token = this.getStefanmarsToken() || this.getAuthToken();
+        if (!token) {
+            console.error('[API] No token available for agencies request');
+        }
         return axios.get(`${this.edgeFunctionsUrl}/agencies`, {
             headers: {
                 'apikey': this.supabaseAnonKey,
                 'Authorization': `Bearer ${this.supabaseAnonKey}`,
-                'token': token
+                'token': token || ''
             },
             params: {
                 sync: sync ? 'true' : 'false'
