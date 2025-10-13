@@ -8,38 +8,24 @@ import Sidebar from './components/Sidebar.tsx';
 import Properties from './pages/Properties.tsx';
 import Login from './pages/Login.tsx';
 import Nopage from './pages/Nopage.tsx';
-import apiService from './services/ApiService'; // Gebruik de instantie
 import Agencies from './pages/Agencies.tsx';
 import FieldMappings from './pages/FieldMappings';
 
-// PrivateRoute component
 const PrivateRoute = ({ element }: { element: React.ReactElement }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-
-
-    const verifyToken = async () => {
-      const token = localStorage.getItem('token');
+    const checkAuth = () => {
+      const token = localStorage.getItem('stefanmars_token');
       if (token) {
-        try {
-          const response = await apiService.verifyToken(token);
-          if (response.status === 200) {
-            setIsAuthenticated(true);
-          } else {
-            localStorage.removeItem('token');
-            setIsAuthenticated(false);
-          }
-        } catch (error) {
-          console.error('Token verification failed:', error);
-          localStorage.removeItem('token');
-          setIsAuthenticated(false);
-        }
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
       }
       setLoading(false);
     };
-    verifyToken();
+    checkAuth();
   }, []);
 
   if (loading) {
@@ -50,15 +36,12 @@ const PrivateRoute = ({ element }: { element: React.ReactElement }) => {
 };
 
 const App = () => {
-  const token = localStorage.getItem('token'); // Fix: get token directly
+  const token = localStorage.getItem('stefanmars_token');
 
-  // Get basename from env
   let basename = import.meta.env.VITE_REACT_APP_FILE_LOCATION || '/';
   if (!basename.startsWith('/')) {
     basename = '/' + basename;
   }
-
-  // Logout component
 
   return (
     <StrictMode>
