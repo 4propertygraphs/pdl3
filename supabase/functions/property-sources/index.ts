@@ -17,6 +17,18 @@ function isCacheValid(lastFetched: string | null): boolean {
   return hoursDiff < CACHE_EXPIRY_HOURS;
 }
 
+function extractDate(data: any, field: string): string | null {
+  if (!data || !field) return null;
+  const value = data[field];
+  if (!value) return null;
+  try {
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? null : date.toISOString();
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -93,10 +105,15 @@ Deno.serve(async (req: Request) => {
             const propertyData = Array.isArray(data) ? data.find((p: any) => p.ListReff === listReff) : null;
 
             if (propertyData) {
+              const apiCreated = extractDate(propertyData, 'date') || extractDate(propertyData, 'AddedDate');
+              const apiModified = extractDate(propertyData, 'Modified');
+
               await supabaseClient.from('wordpress_properties').upsert({
                 agency_id: agencyId,
                 external_id: listReff,
                 raw_data: propertyData,
+                api_created_at: apiCreated,
+                api_modified_at: apiModified,
                 last_fetched: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               }, { onConflict: 'agency_id,external_id' });
@@ -105,6 +122,8 @@ Deno.serve(async (req: Request) => {
                 agency_id: agencyId,
                 external_id: listReff,
                 raw_data: propertyData,
+                api_created_at: apiCreated,
+                api_modified_at: apiModified,
                 last_fetched: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               }, { onConflict: 'agency_id,external_id' });
@@ -144,10 +163,15 @@ Deno.serve(async (req: Request) => {
             if (text && text.trim() !== "") {
               const daftData = JSON.parse(text);
 
+              const apiCreated = extractDate(daftData, 'startDate');
+              const apiModified = null;
+
               await supabaseClient.from('daft_properties').upsert({
                 agency_id: agencyId,
                 external_id: listReff,
                 raw_data: daftData,
+                api_created_at: apiCreated,
+                api_modified_at: apiModified,
                 last_fetched: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               }, { onConflict: 'agency_id,external_id' });
@@ -185,10 +209,15 @@ Deno.serve(async (req: Request) => {
           if (response.ok) {
             const data = await response.json();
             if (data && Object.keys(data).length > 0) {
+              const apiCreated = extractDate(data, 'CreatedOnDate');
+              const apiModified = extractDate(data, 'ModifiedOnDate');
+
               await supabaseClient.from('myhome_properties').upsert({
                 agency_id: agencyId,
                 external_id: listReff,
                 raw_data: data,
+                api_created_at: apiCreated,
+                api_modified_at: apiModified,
                 last_fetched: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               }, { onConflict: 'agency_id,external_id' });
