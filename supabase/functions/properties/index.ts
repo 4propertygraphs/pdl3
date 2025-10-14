@@ -7,6 +7,80 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, token",
 };
 
+function extractDate(data: any, field: string): string | null {
+  if (!data || !field) return null;
+  const value = data[field];
+  if (!value) return null;
+  try {
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? null : date.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+async function cacheExternalSources(supabaseClient: any, agency: any, propertyId: string, apiToken: string) {
+  const tasks = [];
+
+  if (agency.daft_api_key) {
+    tasks.push((async () => {
+      try {
+        const response = await fetch(`https://api.stefanmars.nl/api/daft?key=${agency.daft_api_key}&id=${propertyId}`, {
+          headers: { token: apiToken },
+        });
+        if (response.ok) {
+          const text = await response.text();
+          if (text && text.trim() !== "") {
+            const data = JSON.parse(text);
+            const apiCreated = extractDate(data, 'startDate');
+            await supabaseClient.from('daft_properties').upsert({
+              agency_id: agency.id,
+              external_id: propertyId,
+              raw_data: data,
+              api_created_at: apiCreated,
+              api_modified_at: null,
+              last_fetched: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'agency_id,external_id' });
+          }
+        }
+      } catch (e) {
+        console.error('Daft cache error:', e);
+      }
+    })());
+  }
+
+  if (agency.myhome_api_key) {
+    tasks.push((async () => {
+      try {
+        const response = await fetch(`https://api.stefanmars.nl/api/myhome?key=${agency.myhome_api_key}&id=${propertyId}`, {
+          headers: { token: apiToken },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data && Object.keys(data).length > 0) {
+            const apiCreated = extractDate(data, 'CreatedOnDate');
+            const apiModified = extractDate(data, 'ModifiedOnDate');
+            await supabaseClient.from('myhome_properties').upsert({
+              agency_id: agency.id,
+              external_id: propertyId,
+              raw_data: data,
+              api_created_at: apiCreated,
+              api_modified_at: apiModified,
+              last_fetched: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'agency_id,external_id' });
+          }
+        }
+      } catch (e) {
+        console.error('MyHome cache error:', e);
+      }
+    })());
+  }
+
+  await Promise.all(tasks);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -102,6 +176,8 @@ Deno.serve(async (req: Request) => {
       }
 
       const apiProperties = await response.json();
+      const cachePromises = [];
+
       for (const prop of apiProperties) {
         const picsCount = prop.Pics ? (Array.isArray(prop.Pics) ? prop.Pics.length : (typeof prop.Pics === 'string' ? prop.Pics.split(',').length : 0)) : 0;
 
@@ -126,7 +202,36 @@ Deno.serve(async (req: Request) => {
           agency_name: agency.name,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'agency_id,external_id' });
+
+        const apiCreated = extractDate(prop, 'date') || extractDate(prop, 'AddedDate');
+        const apiModified = extractDate(prop, 'Modified');
+
+        await supabaseClient.from('wordpress_properties').upsert({
+          agency_id: agency.id,
+          external_id: prop.ListReff || prop.Id?.toString(),
+          raw_data: prop,
+          api_created_at: apiCreated,
+          api_modified_at: apiModified,
+          last_fetched: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'agency_id,external_id' });
+
+        await supabaseClient.from('acquaint_properties').upsert({
+          agency_id: agency.id,
+          external_id: prop.ListReff || prop.Id?.toString(),
+          raw_data: prop,
+          api_created_at: apiCreated,
+          api_modified_at: apiModified,
+          last_fetched: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'agency_id,external_id' });
+
+        cachePromises.push(
+          cacheExternalSources(supabaseClient, agency, prop.ListReff || prop.Id?.toString(), apiToken)
+        );
       }
+
+      await Promise.all(cachePromises);
     }
 
     const { data: properties, error: propertiesError } = await supabaseClient
