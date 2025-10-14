@@ -49,6 +49,8 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Failed to fetch from old DB: ${fetchError.message}`);
     }
 
+    console.log(`Sample record from ${table}:`, oldData && oldData.length > 0 ? JSON.stringify(oldData[0]) : 'No data');
+
     if (!oldData || oldData.length === 0) {
       return new Response(
         JSON.stringify({
