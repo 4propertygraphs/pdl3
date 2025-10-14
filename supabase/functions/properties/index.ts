@@ -130,7 +130,26 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    return new Response(JSON.stringify(properties || []), {
+    const transformedProperties = (properties || []).map((prop: any) => ({
+      id: prop.id,
+      Id: prop.id,
+      ParentId: prop.parent_id,
+      Address: prop.address || prop.house_location || '',
+      Price: prop.price || prop.house_price || '',
+      Beds: prop.beds || prop.house_bedrooms || '',
+      Size: prop.size || prop.house_mt_squared || prop.sqm || '',
+      SizeInAcres: prop.size_in_acres || '',
+      Type: prop.type || prop.property_type || '',
+      Propertymarket: prop.propertymarket || prop.sale_type || '',
+      Status: prop.status || '',
+      Agent: prop.agent || prop.agent_name || prop.agency_agent_name || '',
+      Modified: prop.modified || prop.updated_at || '',
+      Pics: prop.pics || prop.images || '',
+      Office: prop.agency_name || '',
+      BathRooms: prop.baths || prop.house_bathrooms || '',
+    }));
+
+    return new Response(JSON.stringify(transformedProperties), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
