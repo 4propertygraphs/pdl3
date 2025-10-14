@@ -2,6 +2,7 @@ import { LineChart } from '@mui/x-charts/LineChart';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { ScraperService } from '../services/ScraperService';
+import { DataMigration } from '../components/DataMigration';
 
 function Dashboard() {
     const [lastScrapeTime, setLastScrapeTime] = useState<Date | null>(null);
@@ -72,6 +73,9 @@ function Dashboard() {
 
     return (
         <div className="p-6 min-h-screen">
+            <div className="mb-6">
+                <DataMigration />
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="shadow-md bg-white dark:bg-gray-900 rounded p-6 flex flex-col items-center justify-center">
                     <h2 className="text-6xl font-bold text-gray-800 dark:text-gray-300">{nextScrapeIn}</h2>
