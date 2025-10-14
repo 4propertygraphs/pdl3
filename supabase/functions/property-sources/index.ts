@@ -7,6 +7,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, apikey, token",
 };
 
+const CACHE_EXPIRY_HOURS = 24;
+
+function isCacheValid(lastFetched: string | null): boolean {
+  if (!lastFetched) return false;
+  const cacheTime = new Date(lastFetched).getTime();
+  const now = new Date().getTime();
+  const hoursDiff = (now - cacheTime) / (1000 * 60 * 60);
+  return hoursDiff < CACHE_EXPIRY_HOURS;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -23,6 +33,7 @@ Deno.serve(async (req: Request) => {
     const daftKey = url.searchParams.get("daft_key");
     const myhomeKey = url.searchParams.get("myhome_key");
     const fourpmKey = url.searchParams.get("fourpm_key");
+    const forceRefresh = url.searchParams.get("force_refresh") === "true";
 
     if (!listReff) {
       return new Response(JSON.stringify({ error: "Missing id parameter" }), {
@@ -53,57 +64,86 @@ Deno.serve(async (req: Request) => {
       daft: null,
       myhome: null,
       errors: {},
+      fromCache: {
+        wordpress: false,
+        daft: false,
+        myhome: false,
+      },
     };
 
-    if (fourpmKey) {
+    if (fourpmKey && agencyId) {
       try {
-        const response = await fetch(`https://api.stefanmars.nl/api/properties`, {
-          headers: { token: apiToken, key: fourpmKey },
-        });
+        const { data: cachedData } = await supabaseClient
+          .from('wordpress_properties')
+          .select('raw_data, last_fetched')
+          .eq('agency_id', agencyId)
+          .eq('external_id', listReff)
+          .maybeSingle();
 
-        if (response.ok) {
-          const data = await response.json();
-          const property = Array.isArray(data) ? data.find((p: any) => p.ListReff === listReff) : null;
-
-          if (property && agencyId) {
-            await supabaseClient.from('wordpress_properties').upsert({
-              agency_id: agencyId,
-              external_id: listReff,
-              raw_data: property,
-              last_fetched: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }, { onConflict: 'agency_id,external_id' });
-
-            await supabaseClient.from('acquaint_properties').upsert({
-              agency_id: agencyId,
-              external_id: listReff,
-              raw_data: property,
-              last_fetched: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }, { onConflict: 'agency_id,external_id' });
-          }
-
-          results.wordpress = property || { message: "Property not found in WordPress" };
+        if (!forceRefresh && cachedData && isCacheValid(cachedData.last_fetched)) {
+          results.wordpress = cachedData.raw_data;
+          results.fromCache.wordpress = true;
         } else {
-          results.errors.wordpress = `HTTP ${response.status}`;
+          const response = await fetch(`https://api.stefanmars.nl/api/properties`, {
+            headers: { token: apiToken, key: fourpmKey },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const propertyData = Array.isArray(data) ? data.find((p: any) => p.ListReff === listReff) : null;
+
+            if (propertyData) {
+              await supabaseClient.from('wordpress_properties').upsert({
+                agency_id: agencyId,
+                external_id: listReff,
+                raw_data: propertyData,
+                last_fetched: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'agency_id,external_id' });
+
+              await supabaseClient.from('acquaint_properties').upsert({
+                agency_id: agencyId,
+                external_id: listReff,
+                raw_data: propertyData,
+                last_fetched: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'agency_id,external_id' });
+
+              results.wordpress = propertyData;
+            } else {
+              results.wordpress = { message: "Property not found in WordPress" };
+            }
+          } else {
+            results.errors.wordpress = `HTTP ${response.status}`;
+          }
         }
       } catch (error: any) {
         results.errors.wordpress = error.message;
       }
     }
 
-    if (daftKey) {
+    if (daftKey && agencyId) {
       try {
-        const response = await fetch(`https://api.stefanmars.nl/api/daft?key=${daftKey}&id=${listReff}`, {
-          headers: { token: apiToken },
-        });
+        const { data: cachedData } = await supabaseClient
+          .from('daft_properties')
+          .select('raw_data, last_fetched')
+          .eq('agency_id', agencyId)
+          .eq('external_id', listReff)
+          .maybeSingle();
 
-        if (response.ok) {
-          const text = await response.text();
-          if (text && text.trim() !== "") {
-            const daftData = JSON.parse(text);
+        if (!forceRefresh && cachedData && isCacheValid(cachedData.last_fetched)) {
+          results.daft = cachedData.raw_data;
+          results.fromCache.daft = true;
+        } else {
+          const response = await fetch(`https://api.stefanmars.nl/api/daft?key=${daftKey}&id=${listReff}`, {
+            headers: { token: apiToken },
+          });
 
-            if (agencyId) {
+          if (response.ok) {
+            const text = await response.text();
+            if (text && text.trim() !== "") {
+              const daftData = JSON.parse(text);
+
               await supabaseClient.from('daft_properties').upsert({
                 agency_id: agencyId,
                 external_id: listReff,
@@ -111,30 +151,40 @@ Deno.serve(async (req: Request) => {
                 last_fetched: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               }, { onConflict: 'agency_id,external_id' });
-            }
 
-            results.daft = daftData;
+              results.daft = daftData;
+            } else {
+              results.daft = { message: "Property not found on Daft" };
+            }
           } else {
-            results.daft = { message: "Property not found on Daft" };
+            results.errors.daft = `HTTP ${response.status}`;
           }
-        } else {
-          results.errors.daft = `HTTP ${response.status}`;
         }
       } catch (error: any) {
         results.errors.daft = error.message;
       }
     }
 
-    if (myhomeKey) {
+    if (myhomeKey && agencyId) {
       try {
-        const response = await fetch(`https://api.stefanmars.nl/api/myhome?key=${myhomeKey}&id=${listReff}`, {
-          headers: { token: apiToken },
-        });
+        const { data: cachedData } = await supabaseClient
+          .from('myhome_properties')
+          .select('raw_data, last_fetched')
+          .eq('agency_id', agencyId)
+          .eq('external_id', listReff)
+          .maybeSingle();
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data && Object.keys(data).length > 0) {
-            if (agencyId) {
+        if (!forceRefresh && cachedData && isCacheValid(cachedData.last_fetched)) {
+          results.myhome = cachedData.raw_data;
+          results.fromCache.myhome = true;
+        } else {
+          const response = await fetch(`https://api.stefanmars.nl/api/myhome?key=${myhomeKey}&id=${listReff}`, {
+            headers: { token: apiToken },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data && Object.keys(data).length > 0) {
               await supabaseClient.from('myhome_properties').upsert({
                 agency_id: agencyId,
                 external_id: listReff,
@@ -142,16 +192,16 @@ Deno.serve(async (req: Request) => {
                 last_fetched: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               }, { onConflict: 'agency_id,external_id' });
-            }
 
-            results.myhome = data;
-          } else {
+              results.myhome = data;
+            } else {
+              results.myhome = { message: "Property not found on MyHome" };
+            }
+          } else if (response.status === 404 || response.status === 500) {
             results.myhome = { message: "Property not found on MyHome" };
+          } else {
+            results.errors.myhome = `HTTP ${response.status}`;
           }
-        } else if (response.status === 404 || response.status === 500) {
-          results.myhome = { message: "Property not found on MyHome" };
-        } else {
-          results.errors.myhome = `HTTP ${response.status}`;
         }
       } catch (error: any) {
         results.errors.myhome = error.message;
