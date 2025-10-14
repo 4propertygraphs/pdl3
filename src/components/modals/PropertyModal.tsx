@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Modal from '../Modal';
 import apiService from '../../services/ApiService';
-import { FaHome } from 'react-icons/fa';
+import { FaHome, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 
 interface PropertyDetailsModalProps {
     show: boolean;
@@ -35,6 +35,9 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
     const [fieldMappings, setFieldMappings] = useState<any[]>([]);
     const [selectedSource, setSelectedSource] = useState<string | null>(null);
     const [showSourceModal, setShowSourceModal] = useState(false);
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [loadedSources, setLoadedSources] = useState<{[key: string]: boolean}>({});
+    const [sourceErrors, setSourceErrors] = useState<{[key: string]: string}>({});
 
 
     useEffect(() => {
@@ -48,13 +51,19 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                         hasAgencyKey: !!agencyUniqueKey
                     });
 
+                    setLoadingProgress(10);
+                    setLoadedSources({});
+                    setSourceErrors({});
+
                     // Use new unified endpoint to fetch all data at once
+                    setLoadingProgress(25);
                     const response = await apiService.getPropertySources(
                         property.ListReff,
                         daft_api_key || undefined,
                         apiKey || undefined,
                         agencyUniqueKey || undefined
                     );
+                    setLoadingProgress(50);
 
                     const data = response.data;
                     console.log("=== PROPERTY SOURCES RESPONSE ===", {
@@ -74,18 +83,24 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                     // Set MyHome data
                     if (data.myhome) {
                         setAdditionalInfo(data.myhome);
+                        setLoadedSources(prev => ({...prev, myhome: true}));
                     } else if (data.errors?.myhome) {
                         setAdditionalInfo({ message: `Failed to load MyHome data: ${data.errors.myhome}` });
+                        setSourceErrors(prev => ({...prev, myhome: data.errors.myhome}));
                     } else if (!apiKey) {
                         setAdditionalInfo({ message: 'MyHome API key is missing.' });
+                        setSourceErrors(prev => ({...prev, myhome: 'API key is missing'}));
                     } else {
                         setAdditionalInfo({ message: 'No MyHome data available.' });
+                        setSourceErrors(prev => ({...prev, myhome: 'No data available'}));
                     }
+                    setLoadingProgress(65);
 
                     // Set Daft data
                     if (data.daft && !data.daft.message) {
                         // Valid Daft data (not an error message object)
                         setDaftInfo(data.daft);
+                        setLoadedSources(prev => ({...prev, daft: true}));
                         console.log("Daft data loaded:", {
                             hasDaftInfo: true,
                             daftInfoKeys: Object.keys(data.daft).slice(0, 15)
@@ -93,33 +108,42 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                     } else if (data.daft?.message) {
                         // API returned a message object (property not found, etc.)
                         setDaftInfo({ message: data.daft.message });
+                        setSourceErrors(prev => ({...prev, daft: data.daft.message}));
                         console.log("Daft message:", data.daft.message);
                     } else if (data.errors?.daft) {
                         setDaftInfo({ message: `Failed to load Daft data: ${data.errors.daft}` });
+                        setSourceErrors(prev => ({...prev, daft: data.errors.daft}));
                         console.log("Daft error:", data.errors.daft);
                     } else if (!daft_api_key) {
                         setDaftInfo({ message: 'Daft API key is missing.' });
+                        setSourceErrors(prev => ({...prev, daft: 'API key is missing'}));
                         console.log("Daft: API key missing");
                     } else {
                         setDaftInfo({ message: 'No Daft data available.' });
+                        setSourceErrors(prev => ({...prev, daft: 'No data available'}));
                         console.log("Daft: No data available");
                     }
+                    setLoadingProgress(80);
 
                     // Set WordPress/4PM data
                     if (data.wordpress) {
                         setWordpressInfo(data.wordpress);
-                        // Also set to Acquaint for backward compatibility
                         setAcquaintInfo(data.wordpress);
+                        setLoadedSources(prev => ({...prev, wordpress: true, acquaint_crm: true}));
                     } else if (data.errors?.wordpress) {
                         setWordpressInfo({ message: `Failed to load WordPress data: ${data.errors.wordpress}` });
                         setAcquaintInfo({ message: `Failed to load WordPress data: ${data.errors.wordpress}` });
+                        setSourceErrors(prev => ({...prev, wordpress: data.errors.wordpress, acquaint_crm: data.errors.wordpress}));
                     } else if (!agencyUniqueKey) {
                         setWordpressInfo({ message: 'WordPress API key is missing.' });
                         setAcquaintInfo({ message: 'WordPress API key is missing.' });
+                        setSourceErrors(prev => ({...prev, wordpress: 'API key is missing', acquaint_crm: 'API key is missing'}));
                     } else {
                         setWordpressInfo({ message: 'No WordPress data available.' });
                         setAcquaintInfo({ message: 'No WordPress data available.' });
+                        setSourceErrors(prev => ({...prev, wordpress: 'No data available', acquaint_crm: 'No data available'}));
                     }
+                    setLoadingProgress(100);
                 }
             } catch (error) {
                 console.error('Error fetching property info:', error);
@@ -127,6 +151,13 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
                 setDaftInfo({ message: 'Failed to load Daft data.' });
                 setWordpressInfo({ message: 'Failed to load WordPress data.' });
                 setAcquaintInfo({ message: 'Failed to load WordPress data.' });
+                setSourceErrors({
+                    myhome: 'Failed to load',
+                    daft: 'Failed to load',
+                    wordpress: 'Failed to load',
+                    acquaint_crm: 'Failed to load'
+                });
+                setLoadingProgress(100);
             }
         };
 
@@ -705,15 +736,71 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({
 
 
 
+    const renderSourceStatus = () => {
+        const sources = [
+            { key: 'wordpress', title: 'WordPress', icon: <img src="/wordpress.png" alt="WordPress" className="w-6 h-6 rounded" /> },
+            { key: 'myhome', title: 'MyHome', icon: <img src="/myhome.png" alt="MyHome" className="w-6 h-6 rounded" /> },
+            { key: 'acquaint_crm', title: 'Acquaint', icon: <img src="/acquaint.jpg" alt="Acquaint" className="w-6 h-6 rounded" /> },
+            { key: 'daft', title: 'Daft', icon: <img src="/daft.jpg" alt="Daft" className="w-6 h-6 rounded" /> },
+        ];
+
+        return (
+            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <h3 className="text-sm font-semibold mb-3 dark:text-gray-200">Data Source Status</h3>
+                <div className="grid grid-cols-2 gap-3">
+                    {sources.map(source => {
+                        const isLoaded = loadedSources[source.key];
+                        const error = sourceErrors[source.key];
+                        return (
+                            <div key={source.key} className="flex items-center gap-2 p-2 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
+                                {source.icon}
+                                <div className="flex-1">
+                                    <div className="text-sm font-medium dark:text-gray-200">{source.title}</div>
+                                    {error && (
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">{error}</div>
+                                    )}
+                                </div>
+                                {isLoaded ? (
+                                    <FaCheckCircle className="w-5 h-5 text-green-500" />
+                                ) : (
+                                    <FaTimesCircle className="w-5 h-5 text-red-500" />
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <Modal show={show} onClose={onClose} title={property.Address}>
             <div className="max-h-[80vh] overflow-hidden">
+                {/* Progress bar */}
+                {loadingProgress < 100 && (
+                    <div className="mb-4">
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm font-medium dark:text-gray-200">Loading data...</span>
+                            <span className="text-sm font-medium dark:text-gray-200">{loadingProgress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                            <div
+                                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                                style={{ width: `${loadingProgress}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Field Mapping Table at the top */}
                 <div className="mb-6">
-                    <div className="overflow-y-auto max-h-[80vh] border border-gray-200 dark:border-gray-700 rounded p-4">
+                    <div className="overflow-y-auto max-h-[60vh] border border-gray-200 dark:border-gray-700 rounded p-4">
                         {renderFieldComparison()}
                     </div>
                 </div>
+
+                {/* Source status list */}
+                {renderSourceStatus()}
 
                 {/* Source modal */}
                 <Modal
