@@ -103,14 +103,26 @@ Deno.serve(async (req: Request) => {
 
       const apiProperties = await response.json();
       for (const prop of apiProperties) {
+        const picsCount = prop.Pics ? (Array.isArray(prop.Pics) ? prop.Pics.length : (typeof prop.Pics === 'string' ? prop.Pics.split(',').length : 0)) : 0;
+
         await supabaseClient.from('properties').upsert({
           agency_id: agency.id,
           source: prop.Source || 'unknown',
           external_id: prop.ListReff || prop.Id?.toString(),
-          house_location: prop.Address || '',
-          house_price: prop.Price || '',
-          house_bedrooms: parseInt(prop.Beds) || null,
-          house_bathrooms: parseInt(prop.BathRooms) || null,
+          address: prop.Address || '',
+          price: prop.Price || '',
+          beds: parseInt(prop.Beds) || null,
+          baths: parseInt(prop.BathRooms) || null,
+          size: prop.Size || '',
+          size_in_acres: prop.SizeInAcres || '',
+          type: prop.Type || '',
+          propertymarket: prop.Propertymarket || '',
+          status: prop.Status || '',
+          agent: prop.Agent || '',
+          pics: picsCount.toString(),
+          images: Array.isArray(prop.Pics) ? prop.Pics.join(',') : (prop.Pics || ''),
+          modified: prop.Modified || new Date().toISOString(),
+          parent_id: prop.ParentId || null,
           agency_name: agency.name,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'agency_id,external_id' });
