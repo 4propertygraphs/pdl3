@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import AgencyModal from '../components/modals/AgencyModal';
-import CreateAgencyModal from '../components/modals/CreateAgencyModal'; // Import the new modal
+import CreateAgencyModal from '../components/modals/CreateAgencyModal';
 import apiService from '../services/ApiService';
 import { Agency } from '../interfaces/Models';
 import { useNavigate } from 'react-router-dom';
-import SearchBarModal from '../components/SearchBar'; // Import SearchBarModal
+import SearchBarModal from '../components/SearchBar';
+import { DataMigration } from '../components/DataMigration';
 
 type Source = 'acquaint' | 'daft' | 'myhome';
 type FilterLogic = 'AND' | 'OR' | 'NOT';
@@ -501,6 +502,11 @@ function Agencies() {
 
                     {/* Add padding to account for the fixed search bar */}
                     <div className="pt-32 sm:pt-36">
+                        {/* Data Migration Component */}
+                        <div className="my-4 mx-4">
+                            <DataMigration />
+                        </div>
+
                         {/* Show total properties and recount all button */}
                         <div className="my-2 sm:my-4 mx-1 sm:mx-4 bg-white dark:bg-gray-900">
                             {canSearch ? (
