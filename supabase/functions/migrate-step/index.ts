@@ -66,32 +66,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const mappedData = oldData.map((record: any) => {
-      if (table === "properties") {
-        return {
-          id: record.id,
-          agency_id: record.agency_id,
-          source: record.source || "4pm",
-          external_id: record.external_id,
-          agency_agent_name: record.agency_agent_name,
-          agency_name: record.agency_name,
-          house_location: record.house_location,
-          house_price: record.house_price,
-          house_bedrooms: record.house_bedrooms || 0,
-          house_bathrooms: record.house_bathrooms || 0,
-          house_mt_squared: record.house_mt_squared,
-          house_extra_info_1: record.house_extra_info_1,
-          house_extra_info_2: record.house_extra_info_2,
-          house_extra_info_3: record.house_extra_info_3,
-          house_extra_info_4: record.house_extra_info_4,
-          agency_image_url: record.agency_image_url,
-          images_url_house: record.images_url_house,
-          created_at: record.created_at,
-          updated_at: record.updated_at
-        };
-      }
-      return record;
-    });
+    const mappedData = oldData;
 
     const { error: insertError } = await newSupabase
       .from(table)
