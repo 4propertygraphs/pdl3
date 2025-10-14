@@ -6,6 +6,7 @@ import { Agency } from '../interfaces/Models';
 import { useNavigate } from 'react-router-dom';
 import SearchBarModal from '../components/SearchBar';
 import { DataMigration } from '../components/DataMigration';
+import Modal from '../components/Modal';
 
 type Source = 'acquaint' | 'daft' | 'myhome';
 type FilterLogic = 'AND' | 'OR' | 'NOT';
@@ -371,6 +372,8 @@ function Agencies() {
     const [syncProgress, setSyncProgress] = useState<{ current: number; total: number } | null>(null);
     const [syncError, setSyncError] = useState<string | null>(null);
 
+    const [showDataMigration, setShowDataMigration] = useState(false);
+
     const handleSyncProperties = async () => {
         if (!window.confirm("This will sync properties from the API for all agencies. This may take several minutes. Continue?")) {
             return;
@@ -502,11 +505,6 @@ function Agencies() {
 
                     {/* Add padding to account for the fixed search bar */}
                     <div className="pt-32 sm:pt-36">
-                        {/* Data Migration Component */}
-                        <div className="my-4 mx-4">
-                            <DataMigration />
-                        </div>
-
                         {/* Show total properties and recount all button */}
                         <div className="my-2 sm:my-4 mx-1 sm:mx-4 bg-white dark:bg-gray-900">
                             {canSearch ? (
@@ -557,6 +555,15 @@ function Agencies() {
                                                 <span className="inline-block w-4 h-4 mr-1 align-middle border-2 border-orange-400 border-t-transparent rounded-full animate-spin"></span>
                                             ) : null}
                                             {syncProgress ? `Sync Properties (${syncProgress.current}/${syncProgress.total})` : 'Sync Properties'}
+                                        </button>
+
+                                        {/* Add button for data migration */}
+                                        <button
+                                            className="ml-4 px-2 py-1 text-xs rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-200 hover:bg-teal-200 dark:hover:bg-teal-800"
+                                            onClick={() => setShowDataMigration(true)}
+                                            title="Data Migration"
+                                        >
+                                            Data Migration
                                         </button>
 
                                         {/* Show sync error if present */}
@@ -725,6 +732,16 @@ function Agencies() {
                                     onClose={(refresh = false) => closeModal(refresh)}
                                 />
                             )}
+
+                            {/* Data Migration Modal */}
+                            <Modal
+                                show={showDataMigration}
+                                onClose={() => setShowDataMigration(false)}
+                                title="Data Migration"
+                                width="max-w-3xl"
+                            >
+                                <DataMigration />
+                            </Modal>
                         </div>
                     </div>
                 </>
