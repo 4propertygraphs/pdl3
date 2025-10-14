@@ -122,8 +122,6 @@ function Properties() {
     data?: any;
   };
   const [modalStack, setModalStack] = useState<ModalStackItem[]>([]);
-  ([]);
-
 
   const closeModal = () => {
     setModalStack((prevStack) => prevStack.slice(0, -1));
