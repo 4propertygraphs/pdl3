@@ -113,7 +113,12 @@ const Table = <T,>({
                                         {columns.map((column) => (
                                             <td key={String(column.key)} className="py-2 sm:py-3 px-2 sm:px-6 text-left whitespace-normal break-words align-top">
                                                 {column.key === 'Price'
-                                                    ? `€${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(item[column.key] as number)}`
+                                                    ? (() => {
+                                                        const priceValue = item[column.key];
+                                                        if (priceValue === null || priceValue === undefined || priceValue === '') return '';
+                                                        const priceNum = typeof priceValue === 'string' ? parseFloat(priceValue) : Number(priceValue);
+                                                        return isNaN(priceNum) ? '' : `€${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(priceNum)}`;
+                                                    })()
                                                     : column.key === 'Modified' && item[column.key]
                                                         ? new Date(item[column.key] as string | number | Date).toLocaleString(undefined, {
                                                             year: 'numeric',
