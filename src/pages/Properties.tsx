@@ -9,6 +9,7 @@ import Table from '../components/Table';
 import SearchBarModal from '../components/SearchBar.tsx';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import Modal from '../components/Modal';
+import { DataMigration } from '../components/DataMigration';
 
 type StatusLogic = 'AND' | 'OR' | 'NOT';
 type FilterType = 'status' | 'propertymarket'; // Changed from 'type' to 'propertymarket'
@@ -620,6 +621,8 @@ function Properties() {
     source: string;
   }>({ show: false, title: '', missing: [], source: '' });
 
+  const [showDataMigration, setShowDataMigration] = useState(false);
+
 
   // Add this function to compare Daft properties with current properties
   const handleCompareWithDaft = async () => {
@@ -803,6 +806,14 @@ function Properties() {
               )}
             </button>
           )}
+          <button
+            className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-800"
+            onClick={() => setShowDataMigration(true)}
+            title="Data Migration"
+            type="button"
+          >
+            Data Migration
+          </button>
         </div>
 
         {/* Remove the duplicate property count badge that was here */}
@@ -896,6 +907,16 @@ function Properties() {
             </div>
           )}
         </div>
+      </Modal>
+
+      {/* Data Migration Modal */}
+      <Modal
+        show={showDataMigration}
+        onClose={() => setShowDataMigration(false)}
+        title="Data Migration"
+        width="max-w-3xl"
+      >
+        <DataMigration />
       </Modal>
 
       {/* Modals */}
