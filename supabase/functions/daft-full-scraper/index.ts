@@ -327,8 +327,19 @@ async function scrapeLocation(
 }
 
 async function fetchPage(url: string): Promise<string | null> {
+  const client = Deno.createHttpClient({
+    proxy: {
+      url: 'http://gate.decodo.com:7000',
+      basicAuth: {
+        username: 'spzoitrqkt',
+        password: 'seHzVtwS1iNk6~p2u4',
+      },
+    },
+  });
+
   try {
     const response = await fetch(url, {
+      client,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -337,9 +348,15 @@ async function fetchPage(url: string): Promise<string | null> {
       },
     });
 
-    if (!response.ok) return null;
-    return await response.text();
+    if (!response.ok) {
+      client.close();
+      return null;
+    }
+    const html = await response.text();
+    client.close();
+    return html;
   } catch (error: any) {
+    client.close();
     return null;
   }
 }

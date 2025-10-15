@@ -15,7 +15,18 @@ Deno.serve(async (req: Request) => {
 
     console.log('🔍 Fetching:', testUrl);
 
+    const client = Deno.createHttpClient({
+      proxy: {
+        url: 'http://gate.decodo.com:7000',
+        basicAuth: {
+          username: 'spzoitrqkt',
+          password: 'seHzVtwS1iNk6~p2u4',
+        },
+      },
+    });
+
     const response = await fetch(testUrl, {
+      client,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -32,6 +43,8 @@ Deno.serve(async (req: Request) => {
 
     const html = await response.text();
     console.log('✅ Response received:', html.length, 'bytes');
+
+    client.close();
 
     const checks = {
       hasNextData: html.includes('__NEXT_DATA__'),
