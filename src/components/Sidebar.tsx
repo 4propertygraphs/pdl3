@@ -57,6 +57,15 @@ const Sidebar: React.FC = () => {
                             <span>Daft Data</span>
                         </Link>
                     </li>
+                    <li>
+                        <Link
+                            to='/debug-scraper'
+                            className={`rounded p-2 text-xl flex items-center space-x-2 ${activePage === '/debug-scraper' ? 'bg-purple-200 text-purple-500 font-medium dark:text-gray-100 dark:bg-gray-800' : 'text-gray-500  dark:text-gray-300 '}`}
+                        >
+                            <FaDatabase size={20} />
+                            <span>Debug Scraper</span>
+                        </Link>
+                    </li>
 
                     {!isLoggedIn && (
                         <li>

@@ -12,6 +12,7 @@ import Agencies from './pages/Agencies.tsx';
 import FieldMappings from './pages/FieldMappings';
 import DaftData from './pages/DaftData';
 import DaftAgencyDetail from './pages/DaftAgencyDetail';
+import DebugScraper from './pages/DebugScraper';
 
 const PrivateRoute = ({ element }: { element: React.ReactElement }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -67,6 +68,7 @@ const App = () => {
                     <Route path="/agencies" element={<Agencies />} />
                     <Route path="/daft-data" element={<DaftData />} />
                     <Route path="/daft-agencies/:agencyId" element={<DaftAgencyDetail />} />
+                    <Route path="/debug-scraper" element={<DebugScraper />} />
                     <Route path="/field-mappings" element={<PrivateRoute element={<FieldMappings />} />} />
 
                     <Route path="*" element={<Nopage />} />
