@@ -376,6 +376,7 @@ function Agencies() {
 
     const [syncExternalSourcesLoading, setSyncExternalSourcesLoading] = useState(false);
     const [syncExternalSourcesError, setSyncExternalSourcesError] = useState<string | null>(null);
+    const [syncExternalSourcesProgress, setSyncExternalSourcesProgress] = useState<string | null>(null);
 
     const handleSyncProperties = async () => {
         if (!window.confirm("This will sync properties from the API for all agencies. This may take several minutes. Continue?")) {
@@ -420,29 +421,57 @@ function Agencies() {
             return;
         }
 
+        console.log('🚀 [SYNC] Starting external sources sync...');
         setSyncExternalSourcesError(null);
         setSyncExternalSourcesLoading(true);
+        setSyncExternalSourcesProgress('Initializing...');
 
         try {
+            console.log('📡 [SYNC] Calling sync-external-sources endpoint...');
+            setSyncExternalSourcesProgress('Fetching agencies...');
+
             const response = await apiService.syncExternalSources();
             const result = response.data;
 
+            console.log('📊 [SYNC] Received response:', result);
+
             if (result.success) {
                 let totalSynced = 0;
+                let details: string[] = [];
+
                 result.results.forEach((agencyResult: any) => {
-                    totalSynced += (agencyResult.sources.daft?.synced || 0);
-                    totalSynced += (agencyResult.sources.myhome?.synced || 0);
-                    totalSynced += (agencyResult.sources.wordpress?.synced || 0);
+                    const agencyName = agencyResult.agency_name;
+                    const daftSynced = agencyResult.sources.daft?.synced || 0;
+                    const myhomeSynced = agencyResult.sources.myhome?.synced || 0;
+                    const wordpressSynced = agencyResult.sources.wordpress?.synced || 0;
+
+                    totalSynced += daftSynced + myhomeSynced + wordpressSynced;
+
+                    console.log(`✅ [SYNC] ${agencyName}:`);
+                    console.log(`   - Daft: ${daftSynced} properties`);
+                    console.log(`   - MyHome: ${myhomeSynced} properties`);
+                    console.log(`   - WordPress: ${wordpressSynced} properties`);
+
+                    if (daftSynced > 0 || myhomeSynced > 0 || wordpressSynced > 0) {
+                        details.push(`${agencyName}: Daft(${daftSynced}) MyHome(${myhomeSynced}) WP(${wordpressSynced})`);
+                    }
                 });
-                alert(`Successfully synced ${totalSynced} properties from external sources!`);
+
+                console.log(`🎉 [SYNC] Total synced: ${totalSynced} properties`);
+                console.log('📋 [SYNC] Details:', details);
+
+                setSyncExternalSourcesProgress(`Completed! Synced ${totalSynced} properties`);
+                alert(`Successfully synced ${totalSynced} properties from external sources!\n\n${details.join('\n')}`);
             } else {
+                console.error('❌ [SYNC] Sync failed');
                 setSyncExternalSourcesError('Failed to sync external sources.');
             }
         } catch (error) {
-            console.error('Error syncing external sources:', error);
+            console.error('❌ [SYNC] Error syncing external sources:', error);
             setSyncExternalSourcesError('Failed to sync external sources. Check console for details.');
         } finally {
             setSyncExternalSourcesLoading(false);
+            setSyncExternalSourcesProgress(null);
         }
     };
 
@@ -601,7 +630,7 @@ function Agencies() {
                                             {syncExternalSourcesLoading ? (
                                                 <span className="inline-block w-4 h-4 mr-1 align-middle border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></span>
                                             ) : null}
-                                            Sync External Sources
+                                            {syncExternalSourcesProgress || 'Sync External Sources'}
                                         </button>
 
                                         {/* Add button for data migration */}

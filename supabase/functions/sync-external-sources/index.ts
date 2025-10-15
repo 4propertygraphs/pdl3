@@ -178,6 +178,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    console.log('🚀 [SYNC-EXTERNAL] Starting sync process...');
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -185,43 +187,59 @@ Deno.serve(async (req: Request) => {
 
     const apiToken = req.headers.get("token") || Deno.env.get('STEFANMARS_API_TOKEN');
     if (!apiToken) {
+      console.error('❌ [SYNC-EXTERNAL] Missing API token');
       return new Response(JSON.stringify({ error: "Missing API token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    console.log('📡 [SYNC-EXTERNAL] Fetching agencies from database...');
     const { data: agencies, error: agenciesError } = await supabaseClient
       .from('agencies')
       .select('*');
 
     if (agenciesError || !agencies) {
+      console.error('❌ [SYNC-EXTERNAL] Failed to fetch agencies:', agenciesError);
       return new Response(JSON.stringify({ error: "Failed to fetch agencies" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    console.log(`📊 [SYNC-EXTERNAL] Found ${agencies.length} agencies to sync`);
     const results = [];
 
-    for (const agency of agencies) {
+    for (let i = 0; i < agencies.length; i++) {
+      const agency = agencies[i];
+      console.log(`\n🏢 [SYNC-EXTERNAL] Processing agency ${i + 1}/${agencies.length}: ${agency.name}`);
+
       const agencyResult: any = {
         agency_id: agency.id,
         agency_name: agency.name,
         sources: {},
       };
 
+      console.log(`   📍 [DAFT] Syncing Daft properties...`);
       const daftResult = await syncDaftProperties(supabaseClient, agency, apiToken);
       agencyResult.sources.daft = daftResult;
+      console.log(`   ✅ [DAFT] Result:`, daftResult);
 
+      console.log(`   📍 [MYHOME] Syncing MyHome properties...`);
       const myhomeResult = await syncMyHomeProperties(supabaseClient, agency, apiToken);
       agencyResult.sources.myhome = myhomeResult;
+      console.log(`   ✅ [MYHOME] Result:`, myhomeResult);
 
+      console.log(`   📍 [WORDPRESS] Syncing WordPress/Acquaint properties...`);
       const wordpressResult = await syncWordPressProperties(supabaseClient, agency, apiToken);
       agencyResult.sources.wordpress = wordpressResult;
+      console.log(`   ✅ [WORDPRESS] Result:`, wordpressResult);
 
       results.push(agencyResult);
     }
+
+    console.log('\n🎉 [SYNC-EXTERNAL] Sync completed successfully!');
+    console.log('📊 [SYNC-EXTERNAL] Total results:', results.length);
 
     return new Response(JSON.stringify({
       success: true,
@@ -232,6 +250,7 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
+    console.error('❌ [SYNC-EXTERNAL] Fatal error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
