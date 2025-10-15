@@ -181,6 +181,10 @@ Deno.serve(async (req: Request) => {
       for (const prop of apiProperties) {
         const picsCount = prop.Pics ? (Array.isArray(prop.Pics) ? prop.Pics.length : (typeof prop.Pics === 'string' ? prop.Pics.split(',').length : 0)) : 0;
 
+        const marketValue = prop.Propertymarket && prop.Propertymarket.toLowerCase().includes('commercial')
+          ? 'commercial'
+          : 'residential';
+
         await supabaseClient.from('properties').upsert({
           agency_id: agency.id,
           source: prop.Source || 'unknown',
@@ -192,8 +196,9 @@ Deno.serve(async (req: Request) => {
           size: prop.Size || '',
           size_in_acres: prop.SizeInAcres || '',
           type: prop.Type || '',
-          propertymarket: prop.Propertymarket || '',
-          status: prop.Status || '',
+          market: marketValue,
+          status: prop.Propertymarket || '',
+          live_status: prop.Status || '',
           agent: prop.Agent || '',
           pics: picsCount.toString(),
           images: Array.isArray(prop.Pics) ? prop.Pics.join(',') : (prop.Pics || ''),
@@ -257,8 +262,9 @@ Deno.serve(async (req: Request) => {
       Size: prop.size || prop.house_mt_squared || prop.sqm || '',
       SizeInAcres: prop.size_in_acres || '',
       Type: prop.type || prop.property_type || '',
-      Propertymarket: prop.propertymarket || prop.sale_type || '',
-      Status: prop.status || '',
+      Propertymarket: prop.status || prop.sale_type || '',
+      Status: prop.live_status || '',
+      Market: prop.market || 'residential',
       Agent: prop.agent || prop.agent_name || prop.agency_agent_name || '',
       Modified: prop.modified || prop.updated_at || '',
       Pics: prop.pics || prop.images || '',
