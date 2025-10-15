@@ -417,7 +417,7 @@ function Agencies() {
     };
 
     const handleSyncExternalSources = async () => {
-        if (!window.confirm("This will sync external sources (Daft, MyHome, WordPress) for all agencies. This may take 10+ minutes. Continue?")) {
+        if (!window.confirm("This will sync external sources (Daft, MyHome, WordPress) for all agencies. This may take several minutes. Continue?")) {
             return;
         }
 
@@ -426,48 +426,65 @@ function Agencies() {
         setSyncExternalSourcesLoading(true);
         setSyncExternalSourcesProgress('Initializing...');
 
+        let totalSynced = 0;
+        let details: string[] = [];
+        let successCount = 0;
+        let errorCount = 0;
+
         try {
-            console.log('📡 [SYNC] Calling sync-external-sources endpoint...');
-            setSyncExternalSourcesProgress('Fetching agencies...');
+            console.log(`📊 [SYNC] Found ${agencies.length} agencies to sync`);
 
-            const response = await apiService.syncExternalSources();
-            const result = response.data;
+            for (let i = 0; i < agencies.length; i++) {
+                const agency = agencies[i];
+                setSyncExternalSourcesProgress(`Syncing ${i + 1}/${agencies.length}: ${agency.name}...`);
+                console.log(`\n🏢 [SYNC] Processing agency ${i + 1}/${agencies.length}: ${agency.name} (ID: ${agency.id})`);
 
-            console.log('📊 [SYNC] Received response:', result);
+                try {
+                    const response = await apiService.syncAgencyExternalSources(agency.id);
+                    const result = response.data;
 
-            if (result.success) {
-                let totalSynced = 0;
-                let details: string[] = [];
+                    if (result.success) {
+                        const agencyResult = result.result;
+                        const daftSynced = agencyResult.sources.daft?.synced || 0;
+                        const myhomeSynced = agencyResult.sources.myhome?.synced || 0;
+                        const wordpressSynced = agencyResult.sources.wordpress?.synced || 0;
 
-                result.results.forEach((agencyResult: any) => {
-                    const agencyName = agencyResult.agency_name;
-                    const daftSynced = agencyResult.sources.daft?.synced || 0;
-                    const myhomeSynced = agencyResult.sources.myhome?.synced || 0;
-                    const wordpressSynced = agencyResult.sources.wordpress?.synced || 0;
+                        const agencyTotal = daftSynced + myhomeSynced + wordpressSynced;
+                        totalSynced += agencyTotal;
 
-                    totalSynced += daftSynced + myhomeSynced + wordpressSynced;
+                        console.log(`✅ [SYNC] ${agency.name}:`);
+                        console.log(`   - Daft: ${daftSynced} properties ${agencyResult.sources.daft?.skipped ? `(${agencyResult.sources.daft.skipped})` : ''}`);
+                        console.log(`   - MyHome: ${myhomeSynced} properties ${agencyResult.sources.myhome?.skipped ? `(${agencyResult.sources.myhome.skipped})` : ''}`);
+                        console.log(`   - WordPress: ${wordpressSynced} properties ${agencyResult.sources.wordpress?.skipped ? `(${agencyResult.sources.wordpress.skipped})` : ''}`);
 
-                    console.log(`✅ [SYNC] ${agencyName}:`);
-                    console.log(`   - Daft: ${daftSynced} properties`);
-                    console.log(`   - MyHome: ${myhomeSynced} properties`);
-                    console.log(`   - WordPress: ${wordpressSynced} properties`);
+                        if (agencyTotal > 0) {
+                            details.push(`${agency.name}: Daft(${daftSynced}) MyHome(${myhomeSynced}) WP(${wordpressSynced})`);
+                        }
 
-                    if (daftSynced > 0 || myhomeSynced > 0 || wordpressSynced > 0) {
-                        details.push(`${agencyName}: Daft(${daftSynced}) MyHome(${myhomeSynced}) WP(${wordpressSynced})`);
+                        successCount++;
+                    } else {
+                        console.error(`❌ [SYNC] Failed to sync ${agency.name}`);
+                        errorCount++;
                     }
-                });
+                } catch (error) {
+                    console.error(`❌ [SYNC] Error syncing ${agency.name}:`, error);
+                    errorCount++;
+                }
+            }
 
-                console.log(`🎉 [SYNC] Total synced: ${totalSynced} properties`);
-                console.log('📋 [SYNC] Details:', details);
+            console.log(`\n🎉 [SYNC] Completed! Total synced: ${totalSynced} properties`);
+            console.log(`📊 [SYNC] Success: ${successCount}, Errors: ${errorCount}`);
+            console.log('📋 [SYNC] Details:', details);
 
-                setSyncExternalSourcesProgress(`Completed! Synced ${totalSynced} properties`);
-                alert(`Successfully synced ${totalSynced} properties from external sources!\n\n${details.join('\n')}`);
+            setSyncExternalSourcesProgress(`Completed! Synced ${totalSynced} properties`);
+
+            if (errorCount > 0) {
+                alert(`Sync completed with some errors:\n- Successfully synced ${successCount} agencies\n- Failed: ${errorCount} agencies\n- Total properties synced: ${totalSynced}\n\n${details.join('\n')}`);
             } else {
-                console.error('❌ [SYNC] Sync failed');
-                setSyncExternalSourcesError('Failed to sync external sources.');
+                alert(`Successfully synced ${totalSynced} properties from external sources!\n\n${details.join('\n')}`);
             }
         } catch (error) {
-            console.error('❌ [SYNC] Error syncing external sources:', error);
+            console.error('❌ [SYNC] Fatal error:', error);
             setSyncExternalSourcesError('Failed to sync external sources. Check console for details.');
         } finally {
             setSyncExternalSourcesLoading(false);

@@ -301,6 +301,19 @@ class ApiService {
             timeout: 600000
         });
     }
+
+    // Sync external sources for a single agency
+    syncAgencyExternalSources(agencyId: number) {
+        const token = this.getStefanmarsToken();
+        return axios.get(`${this.edgeFunctionsUrl}/sync-agency-external?agency_id=${agencyId}`, {
+            headers: {
+                'apikey': this.supabaseAnonKey,
+                'Authorization': `Bearer ${this.supabaseAnonKey}`,
+                'token': token
+            },
+            timeout: 300000
+        });
+    }
 }
 
 const apiService = new ApiService();
