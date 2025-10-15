@@ -15,13 +15,11 @@ const LOCATIONS = [
   'kerry'
 ];
 
-const PROPERTY_TYPES = ['sale', 'rent', 'sharing'];
-
 interface ScraperConfig {
   mode: 'full' | 'incremental';
   maxPagesPerLocation?: number;
   delayBetweenRequests?: number;
-  targetAgencyId?: string;
+  stream?: boolean;
 }
 
 Deno.serve(async (req: Request) => {
@@ -37,38 +35,166 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const mode = url.searchParams.get('mode') || 'full';
     const maxPages = parseInt(url.searchParams.get('maxPages') || '10');
-    const agencyId = url.searchParams.get('agencyId');
+    const stream = url.searchParams.get('stream') === 'true';
 
     const config: ScraperConfig = {
       mode: mode as 'full' | 'incremental',
       maxPagesPerLocation: maxPages,
       delayBetweenRequests: 3000,
-      targetAgencyId: agencyId || undefined,
+      stream,
     };
 
-    console.log('Starting scraper with config:', config);
+    if (stream) {
+      const { readable, writable } = new TransformStream();
+      const writer = writable.getWriter();
+      const encoder = new TextEncoder();
 
-    if (config.mode === 'full') {
-      const result = await runFullScrape(supabase, config);
-      return new Response(JSON.stringify(result), {
+      const sendLog = async (message: string) => {
+        await writer.write(encoder.encode(`data: ${message}\n\n`));
+      };
+
+      (async () => {
+        try {
+          if (config.mode === 'full') {
+            await runFullScrapeStreaming(supabase, config, sendLog);
+          } else {
+            await runIncrementalScrapeStreaming(supabase, config, sendLog);
+          }
+        } catch (error: any) {
+          await sendLog(`❌ Error: ${error.message}`);
+        } finally {
+          await writer.close();
+        }
+      })();
+
+      return new Response(readable, {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
       });
     } else {
-      const result = await runIncrementalScrape(supabase, config);
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      if (config.mode === 'full') {
+        const result = await runFullScrape(supabase, config);
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } else {
+        const result = await runIncrementalScrape(supabase, config);
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
   } catch (error: any) {
-    console.error('Scraper error:', error);
-    return new Response(JSON.stringify({ error: error.message, stack: error.stack }), {
+    console.error('Error:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
+
+async function runFullScrapeStreaming(
+  supabase: any,
+  config: ScraperConfig,
+  sendLog: (msg: string) => Promise<void>
+) {
+  const startTime = Date.now();
+  let totalProperties = 0;
+  let totalAdded = 0;
+  let totalUpdated = 0;
+  const agenciesMap = new Map();
+  let errorCount = 0;
+
+  await sendLog(`🚀 Starting FULL SYNC - ${LOCATIONS.length} locations`);
+
+  for (let i = 0; i < LOCATIONS.length; i++) {
+    const location = LOCATIONS[i];
+    await sendLog(`📍 [${i + 1}/${LOCATIONS.length}] Syncing: ${location}...`);
+
+    try {
+      const locationResult = await scrapeLocation(
+        supabase,
+        location,
+        'sale',
+        config.maxPagesPerLocation || 10,
+        agenciesMap,
+        sendLog
+      );
+
+      totalProperties += locationResult.propertiesScraped;
+      totalAdded += locationResult.propertiesAdded;
+      totalUpdated += locationResult.propertiesUpdated;
+
+      await sendLog(
+        `   ✓ ${location}: ${locationResult.propertiesScraped} properties (${locationResult.propertiesAdded} new, ${locationResult.propertiesUpdated} updated)`
+      );
+    } catch (error: any) {
+      errorCount++;
+      await sendLog(`   ✗ ${location}: ${error.message}`);
+    }
+
+    await delay(config.delayBetweenRequests || 3000);
+  }
+
+  const durationSeconds = Math.floor((Date.now() - startTime) / 1000);
+
+  await supabase.from('daft_scrape_log').insert({
+    scrape_type: 'full',
+    agencies_scraped: agenciesMap.size,
+    properties_scraped: totalProperties,
+    properties_added: totalAdded,
+    properties_updated: totalUpdated,
+    duration_seconds: durationSeconds,
+    error_count: errorCount,
+    completed_at: new Date().toISOString(),
+  });
+
+  await sendLog(`\n🎉 SYNC COMPLETE!`);
+  await sendLog(`📊 Stats: ${totalProperties} properties, ${agenciesMap.size} agencies`);
+  await sendLog(`⏱️  Duration: ${Math.floor(durationSeconds / 60)}m ${durationSeconds % 60}s`);
+}
+
+async function runIncrementalScrapeStreaming(
+  supabase: any,
+  config: ScraperConfig,
+  sendLog: (msg: string) => Promise<void>
+) {
+  await sendLog('🔄 Starting INCREMENTAL SYNC...');
+
+  const { data: agencies } = await supabase
+    .from('daft_agencies')
+    .select('*')
+    .order('last_scraped_at', { ascending: true })
+    .limit(5);
+
+  if (!agencies || agencies.length === 0) {
+    await sendLog('⚠️  No agencies found. Run full sync first.');
+    return;
+  }
+
+  await sendLog(`📋 Checking ${agencies.length} agencies...`);
+
+  for (let i = 0; i < agencies.length; i++) {
+    const agency = agencies[i];
+    await sendLog(`   [${i + 1}/${agencies.length}] ${agency.name}...`);
+
+    await supabase
+      .from('daft_agencies')
+      .update({ last_scraped_at: new Date().toISOString() })
+      .eq('id', agency.id);
+
+    await delay(2000);
+  }
+
+  await sendLog('✓ Incremental sync complete!');
+}
 
 async function runFullScrape(supabase: any, config: ScraperConfig) {
   const startTime = Date.now();
@@ -78,11 +204,7 @@ async function runFullScrape(supabase: any, config: ScraperConfig) {
   const agenciesMap = new Map();
   let errorCount = 0;
 
-  console.log(`Starting FULL scrape of all ${LOCATIONS.length} locations...`);
-
   for (const location of LOCATIONS) {
-    console.log(`\nScraping location: ${location}`);
-    
     try {
       const locationResult = await scrapeLocation(
         supabase,
@@ -95,10 +217,7 @@ async function runFullScrape(supabase: any, config: ScraperConfig) {
       totalProperties += locationResult.propertiesScraped;
       totalAdded += locationResult.propertiesAdded;
       totalUpdated += locationResult.propertiesUpdated;
-
-      console.log(`✓ ${location}: ${locationResult.propertiesScraped} properties, ${locationResult.agenciesFound} agencies`);
     } catch (error: any) {
-      console.error(`✗ Error scraping ${location}:`, error.message);
       errorCount++;
     }
 
@@ -115,6 +234,7 @@ async function runFullScrape(supabase: any, config: ScraperConfig) {
     properties_updated: totalUpdated,
     duration_seconds: durationSeconds,
     error_count: errorCount,
+    completed_at: new Date().toISOString(),
   });
 
   return {
@@ -131,8 +251,6 @@ async function runFullScrape(supabase: any, config: ScraperConfig) {
 }
 
 async function runIncrementalScrape(supabase: any, config: ScraperConfig) {
-  const startTime = Date.now();
-  
   const { data: agencies } = await supabase
     .from('daft_agencies')
     .select('*')
@@ -140,40 +258,18 @@ async function runIncrementalScrape(supabase: any, config: ScraperConfig) {
     .limit(5);
 
   if (!agencies || agencies.length === 0) {
-    return { success: false, message: 'No agencies found. Run full scrape first.' };
+    return { success: false, message: 'No agencies found' };
   }
 
-  let totalUpdated = 0;
-  let errorCount = 0;
-
   for (const agency of agencies) {
-    try {
-      console.log(`Checking agency: ${agency.name}`);
-      
-      await supabase
-        .from('daft_agencies')
-        .update({ last_scraped_at: new Date().toISOString() })
-        .eq('id', agency.id);
-
-      totalUpdated++;
-    } catch (error: any) {
-      console.error(`Error checking agency ${agency.name}:`, error.message);
-      errorCount++;
-    }
-
+    await supabase
+      .from('daft_agencies')
+      .update({ last_scraped_at: new Date().toISOString() })
+      .eq('id', agency.id);
     await delay(2000);
   }
 
-  const durationSeconds = Math.floor((Date.now() - startTime) / 1000);
-
-  return {
-    success: true,
-    mode: 'incremental',
-    agenciesChecked: agencies.length,
-    totalUpdated,
-    durationSeconds,
-    errorCount,
-  };
+  return { success: true, agenciesChecked: agencies.length };
 }
 
 async function scrapeLocation(
@@ -181,7 +277,8 @@ async function scrapeLocation(
   location: string,
   propertyType: string,
   maxPages: number,
-  agenciesMap: Map<string, any>
+  agenciesMap: Map<string, any>,
+  sendLog?: (msg: string) => Promise<void>
 ) {
   let propertiesScraped = 0;
   let propertiesAdded = 0;
@@ -193,21 +290,16 @@ async function scrapeLocation(
 
     try {
       const html = await fetchPage(url);
-      if (!html) {
-        console.log(`No data for ${location} page ${page}`);
-        break;
-      }
+      if (!html) break;
 
       const nextData = extractNextData(html);
-      if (!nextData) {
-        console.log(`No NEXT_DATA for ${location} page ${page}`);
-        break;
-      }
+      if (!nextData) break;
 
       const listings = nextData.props?.pageProps?.listings || [];
-      if (listings.length === 0) {
-        console.log(`No listings found for ${location} page ${page}`);
-        break;
+      if (listings.length === 0) break;
+
+      if (sendLog && page === 0) {
+        await sendLog(`      Page 1/${maxPages}: ${listings.length} listings found`);
       }
 
       for (const listing of listings) {
@@ -221,40 +313,33 @@ async function scrapeLocation(
         }
       }
 
+      if (sendLog && page > 0 && page % 2 === 0) {
+        await sendLog(`      Page ${page + 1}/${maxPages}: +${listings.length} properties`);
+      }
+
       await delay(1500);
     } catch (error: any) {
-      console.error(`Error scraping ${url}:`, error.message);
       break;
     }
   }
 
-  return {
-    propertiesScraped,
-    propertiesAdded,
-    propertiesUpdated,
-    agenciesFound: agenciesMap.size,
-  };
+  return { propertiesScraped, propertiesAdded, propertiesUpdated };
 }
 
 async function fetchPage(url: string): Promise<string | null> {
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
         'Cache-Control': 'no-cache',
       },
     });
 
-    if (!response.ok) {
-      console.error(`HTTP ${response.status} for ${url}`);
-      return null;
-    }
-
+    if (!response.ok) return null;
     return await response.text();
   } catch (error: any) {
-    console.error('Fetch error:', error.message);
     return null;
   }
 }
@@ -271,7 +356,7 @@ function extractNextData(html: string): any {
 
 async function processProperty(supabase: any, listing: any, agenciesMap: Map<string, any>) {
   const propertyData = parsePropertyData(listing);
-  
+
   let agencyId = null;
   if (propertyData.seller?.id) {
     const agency = await upsertAgency(supabase, propertyData.seller, agenciesMap);

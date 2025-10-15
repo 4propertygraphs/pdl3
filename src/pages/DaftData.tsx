@@ -43,6 +43,7 @@ const DaftData: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [syncMode, setSyncMode] = useState<'full' | 'incremental'>('full');
+  const [syncLogs, setSyncLogs] = useState<string[]>([]);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -108,69 +109,46 @@ const DaftData: React.FC = () => {
     }
 
     setSyncing(true);
-    try {
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/daft-full-scraper?mode=full&maxPages=10`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
-        }
-      );
+    setSyncLogs([]);
 
-      if (response.ok) {
-        const result = await response.json();
-        alert(`Full sync completed!
+    const eventSource = new EventSource(
+      `${supabaseUrl}/functions/v1/daft-full-scraper?mode=full&maxPages=10&stream=true`
+    );
 
-Locations: ${result.locationsScraped}
-Properties: ${result.totalProperties}
-Added: ${result.totalAdded}
-Updated: ${result.totalUpdated}
-Agencies: ${result.totalAgencies}
-Duration: ${Math.floor(result.durationSeconds / 60)} minutes`);
-        loadData();
-        loadScrapeLogs();
-      } else {
-        const error = await response.text();
-        alert(`Sync failed: ${error}`);
-      }
-    } catch (error: any) {
-      console.error('Error starting sync:', error);
-      alert('Error: ' + error.message);
-    } finally {
+    eventSource.onmessage = (event) => {
+      const log = event.data;
+      setSyncLogs(prev => [...prev, log]);
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
       setSyncing(false);
-    }
+      setSyncLogs(prev => [...prev, '✓ Sync completed!']);
+      loadData();
+      loadScrapeLogs();
+    };
   };
 
   const startIncrementalSync = async () => {
     setSyncing(true);
-    try {
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/daft-full-scraper?mode=incremental&maxPages=2`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
-        }
-      );
+    setSyncLogs([]);
 
-      if (response.ok) {
-        const result = await response.json();
-        alert(`Incremental sync completed!
+    const eventSource = new EventSource(
+      `${supabaseUrl}/functions/v1/daft-full-scraper?mode=incremental&maxPages=2&stream=true`
+    );
 
-Agencies checked: ${result.agenciesChecked}
-Duration: ${result.durationSeconds} seconds`);
-        loadData();
-        loadScrapeLogs();
-      }
-    } catch (error: any) {
-      console.error('Error:', error);
-      alert('Error: ' + error.message);
-    } finally {
+    eventSource.onmessage = (event) => {
+      const log = event.data;
+      setSyncLogs(prev => [...prev, log]);
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
       setSyncing(false);
-    }
+      setSyncLogs(prev => [...prev, '✓ Incremental sync completed!']);
+      loadData();
+      loadScrapeLogs();
+    };
   };
 
   const filteredProperties = properties.filter(p =>
@@ -301,9 +279,21 @@ Duration: ${result.durationSeconds} seconds`);
 
           {syncing && (
             <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="text-blue-800 dark:text-blue-200 font-medium">
-                Data sync in progress... This may take several minutes. You can leave this page.
+              <p className="text-blue-800 dark:text-blue-200 font-medium mb-3">
+                Data sync in progress... This may take several minutes.
               </p>
+              <div className="bg-gray-900 rounded-lg p-4 max-h-96 overflow-y-auto">
+                <div className="font-mono text-sm space-y-1">
+                  {syncLogs.map((log, idx) => (
+                    <div key={idx} className="text-green-400">
+                      {log}
+                    </div>
+                  ))}
+                  {syncLogs.length > 0 && (
+                    <div className="text-green-400 animate-pulse">▊</div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>
