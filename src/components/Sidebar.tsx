@@ -3,7 +3,8 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CiViewTable } from "react-icons/ci";
 import { MdLogout } from "react-icons/md";
-import { BiGitCompare } from "react-icons/bi"; // Add this import for field mapping icon
+import { BiGitCompare } from "react-icons/bi";
+import { FaDatabase } from "react-icons/fa";
 
 const Sidebar: React.FC = () => {
     const location = useLocation();
@@ -43,10 +44,17 @@ const Sidebar: React.FC = () => {
                             to='/agencies'
                             className={`rounded p-2 text-xl flex items-center space-x-2 ${activePage === '/agencies' ? 'bg-purple-200 text-purple-500 font-medium dark:text-gray-100 dark:bg-gray-800' : 'text-gray-500  dark:text-gray-300 '}`}
                         >
-
-
                             <CiViewTable size={20} />
                             <span>Agencies</span>
+                        </Link>
+                    </li>
+                    <li>
+                        <Link
+                            to='/daft-data'
+                            className={`rounded p-2 text-xl flex items-center space-x-2 ${activePage === '/daft-data' ? 'bg-purple-200 text-purple-500 font-medium dark:text-gray-100 dark:bg-gray-800' : 'text-gray-500  dark:text-gray-300 '}`}
+                        >
+                            <FaDatabase size={20} />
+                            <span>Daft Data</span>
                         </Link>
                     </li>
 
@@ -97,6 +105,13 @@ const Sidebar: React.FC = () => {
                 >
                     <CiViewTable size={24} />
                     <span>Agencies</span>
+                </Link>
+                <Link
+                    to="/daft-data"
+                    className={`flex flex-col items-center text-xs ${activePage === '/daft-data' ? 'text-purple-600' : 'text-gray-500 dark:text-gray-300'}`}
+                >
+                    <FaDatabase size={24} />
+                    <span>Daft</span>
                 </Link>
                 {isLoggedIn && (
                     <Link

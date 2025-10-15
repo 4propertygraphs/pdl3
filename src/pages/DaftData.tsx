@@ -24,7 +24,7 @@ interface DaftAgency {
   last_scraped_at: string;
 }
 
-interface ScrapeLog {
+interface SyncLog {
   id: number;
   scrape_type: string;
   properties_scraped: number;
@@ -38,11 +38,11 @@ const DaftData: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'properties' | 'agencies'>('properties');
   const [properties, setProperties] = useState<DaftProperty[]>([]);
   const [agencies, setAgencies] = useState<DaftAgency[]>([]);
-  const [scrapeLogs, setScrapeLogs] = useState<ScrapeLog[]>([]);
+  const [scrapeLogs, setScrapeLogs] = useState<SyncLog[]>([]);
   const [loading, setLoading] = useState(false);
-  const [scraping, setScraping] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [scrapeMode, setScrapeMode] = useState<'full' | 'incremental'>('full');
+  const [syncMode, setSyncMode] = useState<'full' | 'incremental'>('full');
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -102,12 +102,12 @@ const DaftData: React.FC = () => {
     }
   };
 
-  const startFullScrape = async () => {
-    if (!confirm('Start FULL SCRAPE? This will scrape ALL locations and may take 30-60 minutes.')) {
+  const startFullSync = async () => {
+    if (!confirm('Start FULL SYNC? This will sync ALL locations and may take 30-60 minutes.')) {
       return;
     }
 
-    setScraping(true);
+    setSyncing(true);
     try {
       const response = await fetch(
         `${supabaseUrl}/functions/v1/daft-full-scraper?mode=full&maxPages=10`,
@@ -121,7 +121,7 @@ const DaftData: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
-        alert(`Full scrape completed!
+        alert(`Full sync completed!
 
 Locations: ${result.locationsScraped}
 Properties: ${result.totalProperties}
@@ -133,18 +133,18 @@ Duration: ${Math.floor(result.durationSeconds / 60)} minutes`);
         loadScrapeLogs();
       } else {
         const error = await response.text();
-        alert(`Scrape failed: ${error}`);
+        alert(`Sync failed: ${error}`);
       }
     } catch (error: any) {
-      console.error('Error starting scrape:', error);
+      console.error('Error starting sync:', error);
       alert('Error: ' + error.message);
     } finally {
-      setScraping(false);
+      setSyncing(false);
     }
   };
 
-  const startIncrementalScrape = async () => {
-    setScraping(true);
+  const startIncrementalSync = async () => {
+    setSyncing(true);
     try {
       const response = await fetch(
         `${supabaseUrl}/functions/v1/daft-full-scraper?mode=incremental&maxPages=2`,
@@ -158,7 +158,7 @@ Duration: ${Math.floor(result.durationSeconds / 60)} minutes`);
 
       if (response.ok) {
         const result = await response.json();
-        alert(`Incremental scrape completed!
+        alert(`Incremental sync completed!
 
 Agencies checked: ${result.agenciesChecked}
 Duration: ${result.durationSeconds} seconds`);
@@ -169,7 +169,7 @@ Duration: ${result.durationSeconds} seconds`);
       console.error('Error:', error);
       alert('Error: ' + error.message);
     } finally {
-      setScraping(false);
+      setSyncing(false);
     }
   };
 
@@ -195,13 +195,13 @@ Duration: ${result.durationSeconds} seconds`);
   const agencyColumns = [
     { key: 'name' as keyof DaftAgency, label: 'Agency Name' },
     { key: 'total_properties' as keyof DaftAgency, label: 'Properties' },
-    { key: 'last_scraped_at' as keyof DaftAgency, label: 'Last Scraped' },
+    { key: 'last_scraped_at' as keyof DaftAgency, label: 'Last Synced' },
   ];
 
   const stats = {
     totalProperties: properties.length,
     totalAgencies: agencies.length,
-    lastScrape: scrapeLogs[0]?.completed_at ? new Date(scrapeLogs[0].completed_at).toLocaleString() : 'Never',
+    lastSync: scrapeLogs[0]?.completed_at ? new Date(scrapeLogs[0].completed_at).toLocaleString() : 'Never',
   };
 
   return (
@@ -210,10 +210,10 @@ Duration: ${result.durationSeconds} seconds`);
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2 flex items-center gap-2">
             <FaDatabase className="text-blue-600" />
-            Daft.ie Scraper
+            Daft.ie Data Sync
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Automated property scraping from Daft.ie - Full & Incremental modes
+            Direct API integration with Daft.ie - Full & Incremental sync modes
           </p>
         </div>
 
@@ -241,8 +241,8 @@ Duration: ${result.durationSeconds} seconds`);
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Last Scrape</p>
-                <p className="text-sm font-medium text-gray-800 dark:text-white">{stats.lastScrape}</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">Last Sync</p>
+                <p className="text-sm font-medium text-gray-800 dark:text-white">{stats.lastSync}</p>
               </div>
               <FaDatabase className="text-purple-500" size={32} />
             </div>
@@ -250,43 +250,43 @@ Duration: ${result.durationSeconds} seconds`);
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 p-6">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Scraper Controls</h3>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Sync Controls</h3>
 
           <div className="mb-4 flex gap-4">
             <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
               <input
                 type="radio"
-                name="scrapeMode"
+                name="syncMode"
                 value="full"
-                checked={scrapeMode === 'full'}
-                onChange={() => setScrapeMode('full')}
+                checked={syncMode === 'full'}
+                onChange={() => setSyncMode('full')}
                 className="text-blue-600"
               />
-              <span className="font-medium">Full Scrape</span>
+              <span className="font-medium">Full Sync</span>
               <span className="text-sm text-gray-500">(All locations, ~30-60 min)</span>
             </label>
             <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
               <input
                 type="radio"
-                name="scrapeMode"
+                name="syncMode"
                 value="incremental"
-                checked={scrapeMode === 'incremental'}
-                onChange={() => setScrapeMode('incremental')}
+                checked={syncMode === 'incremental'}
+                onChange={() => setSyncMode('incremental')}
                 className="text-blue-600"
               />
-              <span className="font-medium">Incremental</span>
-              <span className="text-sm text-gray-500">(Check updates only, ~5 min)</span>
+              <span className="font-medium">Incremental Sync</span>
+              <span className="text-sm text-gray-500">(Updates only, ~5 min)</span>
             </label>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={scrapeMode === 'full' ? startFullScrape : startIncrementalScrape}
-              disabled={scraping}
+              onClick={syncMode === 'full' ? startFullSync : startIncrementalSync}
+              disabled={syncing}
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {scraping ? <FaSpinner className="animate-spin" /> : <FaPlay />}
-              {scraping ? 'Scraping...' : `Start ${scrapeMode === 'full' ? 'Full' : 'Incremental'} Scrape`}
+              {syncing ? <FaSpinner className="animate-spin" /> : <FaPlay />}
+              {syncing ? 'Syncing...' : `Start ${syncMode === 'full' ? 'Full' : 'Incremental'} Sync`}
             </button>
 
             <button
@@ -299,10 +299,10 @@ Duration: ${result.durationSeconds} seconds`);
             </button>
           </div>
 
-          {scraping && (
+          {syncing && (
             <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-blue-800 dark:text-blue-200 font-medium">
-                Scraping in progress... This may take several minutes. You can leave this page.
+                Data sync in progress... This may take several minutes. You can leave this page.
               </p>
             </div>
           )}
@@ -310,7 +310,7 @@ Duration: ${result.durationSeconds} seconds`);
 
         {scrapeLogs.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 p-4">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Recent Scrape History</h3>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Recent Sync History</h3>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {scrapeLogs.map(log => (
                 <div key={log.id} className="flex justify-between items-center text-sm border-b dark:border-gray-700 pb-2">
