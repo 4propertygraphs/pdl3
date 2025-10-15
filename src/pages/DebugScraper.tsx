@@ -36,7 +36,12 @@ const DebugScraper: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${supabaseUrl}/functions/v1/daft-debug?url=${encodeURIComponent(testUrl)}`
+        `${supabaseUrl}/functions/v1/daft-debug?url=${encodeURIComponent(testUrl)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+        }
       );
       const data = await response.json();
       setResult(data);
