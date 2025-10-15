@@ -167,7 +167,7 @@ const DebugScraper: React.FC = () => {
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Listings Found</p>
                   <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                    {result.checks.listingsCount}
+                    {result.checks?.listingsCount || 0}
                   </p>
                 </div>
               </div>
@@ -175,7 +175,7 @@ const DebugScraper: React.FC = () => {
               <div className="border-t dark:border-gray-700 pt-4">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Checks</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {Object.entries(result.checks).map(([key, value]) => (
+                  {result.checks && Object.entries(result.checks).map(([key, value]) => (
                     <div
                       key={key}
                       className={`flex items-center gap-2 p-3 rounded-lg ${
