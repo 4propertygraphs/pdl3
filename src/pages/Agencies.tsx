@@ -432,12 +432,20 @@ function Agencies() {
         let errorCount = 0;
 
         try {
-            console.log(`📊 [SYNC] Found ${agencies.length} agencies to sync`);
+            const agenciesToSync = agencies.filter(agency => {
+                const name = agency.name.toLowerCase();
+                return !name.startsWith('4pm') && !name.startsWith('4property');
+            });
 
-            for (let i = 0; i < agencies.length; i++) {
-                const agency = agencies[i];
-                setSyncExternalSourcesProgress(`Syncing ${i + 1}/${agencies.length}: ${agency.name}...`);
-                console.log(`\n🏢 [SYNC] Processing agency ${i + 1}/${agencies.length}: ${agency.name} (ID: ${agency.id})`);
+            const skippedCount = agencies.length - agenciesToSync.length;
+            console.log(`📊 [SYNC] Found ${agencies.length} agencies total`);
+            console.log(`⏭️  [SYNC] Skipping ${skippedCount} agencies (4pm/4property)`);
+            console.log(`✅ [SYNC] Will sync ${agenciesToSync.length} agencies`);
+
+            for (let i = 0; i < agenciesToSync.length; i++) {
+                const agency = agenciesToSync[i];
+                setSyncExternalSourcesProgress(`Syncing ${i + 1}/${agenciesToSync.length}: ${agency.name}...`);
+                console.log(`\n🏢 [SYNC] Processing agency ${i + 1}/${agenciesToSync.length}: ${agency.name} (ID: ${agency.id})`);
 
                 try {
                     const response = await apiService.syncAgencyExternalSources(agency.id);
