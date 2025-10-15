@@ -1,7 +1,7 @@
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
 Deno.serve(async (req: Request) => {
@@ -30,77 +30,49 @@ Deno.serve(async (req: Request) => {
       },
     });
 
-    const status = response.status;
-    const headers = Object.fromEntries(response.headers.entries());
     const html = await response.text();
+    console.log('✅ Response received:', html.length, 'bytes');
 
-    console.log('📊 Status:', status);
-    console.log('📄 HTML length:', html.length);
-
-    const hasNextData = html.includes('__NEXT_DATA__');
-    const hasListings = html.includes('listings');
-    
-    let nextData = null;
-    let listingsCount = 0;
-    
-    if (hasNextData) {
-      try {
-        const scriptMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
-        if (scriptMatch) {
-          nextData = JSON.parse(scriptMatch[1]);
-          const listings = nextData?.props?.pageProps?.listings || [];
-          listingsCount = listings.length;
-          console.log('✅ Found', listingsCount, 'listings in __NEXT_DATA__');
-        }
-      } catch (e) {
-        console.error('❌ Error parsing __NEXT_DATA__:', e.message);
-      }
-    }
-
-    const htmlPreview = html.substring(0, 2000);
-    const htmlEnd = html.substring(Math.max(0, html.length - 500));
-
-    const result = {
-      success: true,
-      url: testUrl,
-      status,
-      responseHeaders: headers,
-      htmlLength: html.length,
-      checks: {
-        hasNextData,
-        hasListings,
-        listingsCount,
-        hasTitle: html.includes('<title>'),
-        hasBody: html.includes('<body'),
-        hasHead: html.includes('<head'),
-        hasReact: html.includes('__NEXT'),
-        hasCloudflare: html.toLowerCase().includes('cloudflare'),
-        hasCaptcha: html.toLowerCase().includes('captcha'),
-      },
-      htmlPreview,
-      htmlEnd,
-      nextDataSample: nextData ? {
-        hasProps: !!nextData.props,
-        hasPageProps: !!nextData.props?.pageProps,
-        hasListings: !!nextData.props?.pageProps?.listings,
-        listingsCount,
-        firstListing: nextData.props?.pageProps?.listings?.[0] || null,
-      } : null,
+    const checks = {
+      hasNextData: html.includes('__NEXT_DATA__'),
+      hasListings: html.includes('SearchPage_') || html.includes('data-testid="listing"'),
+      listingsCount: (html.match(/data-testid="listing"/g) || []).length,
+      hasTitle: html.includes('<title>'),
+      hasPagination: html.includes('pagination'),
+      hasImages: html.includes('img'),
     };
 
-    return new Response(JSON.stringify(result, null, 2), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        url: testUrl,
+        status: response.status,
+        htmlLength: html.length,
+        htmlPreview: html.substring(0, 500),
+        checks,
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
   } catch (error: any) {
     console.error('❌ Error:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: error.message,
-      stack: error.stack 
-    }, null, 2), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message,
+        stack: error.stack,
+      }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
   }
 });
