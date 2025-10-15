@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlay, FaSpinner, FaDatabase, FaBuilding, FaHome, FaSyncAlt } from 'react-icons/fa';
-import Table from '../components/Table';
-import SearchBarModal from '../components/SearchBar';
-
-interface DaftProperty {
-  id: number;
-  daft_id: string;
-  title: string;
-  price: number;
-  address: string;
-  property_type: string;
-  bedrooms: number;
-  bathrooms: number;
-  status: string;
-  last_scraped_at: string;
-}
+import { FaPlay, FaSpinner, FaBuilding, FaSyncAlt, FaExternalLinkAlt } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 
 interface DaftAgency {
   id: number;
   daft_id: string;
   name: string;
-  total_properties: number;
+  phone: string;
+  email: string;
+  website: string;
+  logo_url: string;
+  total_properties?: number;
   last_scraped_at: string;
+}
+
+interface Stats {
+  totalProperties: number;
+  totalAgencies: number;
+  lastSync: string;
 }
 
 interface SyncLog {
@@ -30,14 +26,15 @@ interface SyncLog {
   properties_scraped: number;
   properties_added: number;
   properties_updated: number;
+  agencies_scraped: number;
   duration_seconds: number;
   completed_at: string;
 }
 
 const DaftData: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'properties' | 'agencies'>('properties');
-  const [properties, setProperties] = useState<DaftProperty[]>([]);
+  const navigate = useNavigate();
   const [agencies, setAgencies] = useState<DaftAgency[]>([]);
+  const [stats, setStats] = useState<Stats>({ totalProperties: 0, totalAgencies: 0, lastSync: '' });
   const [scrapeLogs, setScrapeLogs] = useState<SyncLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -51,29 +48,45 @@ const DaftData: React.FC = () => {
   useEffect(() => {
     loadData();
     loadScrapeLogs();
-  }, [activeTab]);
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const endpoint = activeTab === 'properties' ? 'daft_properties' : 'daft_agencies';
-      const response = await fetch(
-        `${supabaseUrl}/rest/v1/${endpoint}?select=*&order=last_scraped_at.desc&limit=100`,
-        {
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
-        }
-      );
+      const [agenciesRes, propertiesRes, lastSyncRes] = await Promise.all([
+        fetch(`${supabaseUrl}/rest/v1/daft_agencies?select=*&order=name.asc`, {
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+        }),
+        fetch(`${supabaseUrl}/rest/v1/daft_properties?select=agency_id`, {
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+        }),
+        fetch(`${supabaseUrl}/rest/v1/daft_scrape_log?select=completed_at&order=completed_at.desc&limit=1`, {
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+        }),
+      ]);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (activeTab === 'properties') {
-          setProperties(data);
-        } else {
-          setAgencies(data);
-        }
+      if (agenciesRes.ok && propertiesRes.ok) {
+        const agenciesData: DaftAgency[] = await agenciesRes.json();
+        const propertiesData = await propertiesRes.json();
+
+        const propertyCounts = propertiesData.reduce((acc: any, prop: any) => {
+          acc[prop.agency_id] = (acc[prop.agency_id] || 0) + 1;
+          return acc;
+        }, {});
+
+        const agenciesWithCounts = agenciesData.map(agency => ({
+          ...agency,
+          total_properties: propertyCounts[agency.id] || 0,
+        }));
+
+        setAgencies(agenciesWithCounts);
+
+        const lastSyncData = await lastSyncRes.json();
+        setStats({
+          totalProperties: propertiesData.length,
+          totalAgencies: agenciesData.length,
+          lastSync: lastSyncData[0]?.completed_at || '',
+        });
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -87,10 +100,7 @@ const DaftData: React.FC = () => {
       const response = await fetch(
         `${supabaseUrl}/rest/v1/daft_scrape_log?select=*&order=completed_at.desc&limit=10`,
         {
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
         }
       );
 
@@ -151,131 +161,112 @@ const DaftData: React.FC = () => {
     };
   };
 
-  const filteredProperties = properties.filter(p =>
-    p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.address?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredAgencies = agencies.filter(a =>
-    a.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const propertyColumns = [
-    { key: 'title' as keyof DaftProperty, label: 'Title' },
-    { key: 'address' as keyof DaftProperty, label: 'Address' },
-    { key: 'price' as keyof DaftProperty, label: 'Price' },
-    { key: 'property_type' as keyof DaftProperty, label: 'Type' },
-    { key: 'bedrooms' as keyof DaftProperty, label: 'Beds' },
-    { key: 'bathrooms' as keyof DaftProperty, label: 'Baths' },
-    { key: 'status' as keyof DaftProperty, label: 'Status' },
-  ];
-
-  const agencyColumns = [
-    { key: 'name' as keyof DaftAgency, label: 'Agency Name' },
-    { key: 'total_properties' as keyof DaftAgency, label: 'Properties' },
-    { key: 'last_scraped_at' as keyof DaftAgency, label: 'Last Synced' },
-  ];
-
-  const stats = {
-    totalProperties: properties.length,
-    totalAgencies: agencies.length,
-    lastSync: scrapeLogs[0]?.completed_at ? new Date(scrapeLogs[0].completed_at).toLocaleString() : 'Never',
+  const handleAgencyClick = (agency: DaftAgency) => {
+    navigate(`/daft-agencies/${agency.id}`);
   };
 
+  const filteredAgencies = agencies.filter(agency =>
+    agency.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:ml-64">
+    <div className="flex-1 p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2 flex items-center gap-2">
-            <FaDatabase className="text-blue-600" />
-            Daft.ie Data Sync
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Direct API integration with Daft.ie - Full & Incremental sync modes
-          </p>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Daft.ie Estate Agents</h1>
+          <p className="text-gray-600 dark:text-gray-400">Browse estate agents and their property listings from Daft.ie</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Total Properties</p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-white">{stats.totalProperties}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Properties</p>
+                <p className="text-3xl font-bold text-gray-800 dark:text-white">{stats.totalProperties.toLocaleString()}</p>
               </div>
-              <FaHome className="text-blue-500" size={32} />
+              <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <FaBuilding className="text-2xl text-blue-600 dark:text-blue-300" />
+              </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Total Agencies</p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-white">{stats.totalAgencies}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Agencies</p>
+                <p className="text-3xl font-bold text-gray-800 dark:text-white">{stats.totalAgencies}</p>
               </div>
-              <FaBuilding className="text-green-500" size={32} />
+              <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+                <FaSyncAlt className="text-2xl text-green-600 dark:text-green-300" />
+              </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Last Sync</p>
-                <p className="text-sm font-medium text-gray-800 dark:text-white">{stats.lastSync}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Last Sync</p>
+                <p className="text-lg font-semibold text-gray-800 dark:text-white">
+                  {stats.lastSync ? new Date(stats.lastSync).toLocaleDateString() : 'Never'}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500">
+                  {stats.lastSync ? new Date(stats.lastSync).toLocaleTimeString() : ''}
+                </p>
               </div>
-              <FaDatabase className="text-purple-500" size={32} />
             </div>
           </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 p-6">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Sync Controls</h3>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Sync Controls</h2>
 
-          <div className="mb-4 flex gap-4">
-            <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+          <div className="flex gap-6 mb-4">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 name="syncMode"
                 value="full"
                 checked={syncMode === 'full'}
-                onChange={() => setSyncMode('full')}
-                className="text-blue-600"
+                onChange={(e) => setSyncMode(e.target.value as 'full' | 'incremental')}
+                className="w-4 h-4 text-blue-600"
               />
-              <span className="font-medium">Full Sync</span>
-              <span className="text-sm text-gray-500">(All locations, ~30-60 min)</span>
+              <span className="text-gray-700 dark:text-gray-300">Full Sync (All locations)</span>
             </label>
-            <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 name="syncMode"
                 value="incremental"
                 checked={syncMode === 'incremental'}
-                onChange={() => setSyncMode('incremental')}
-                className="text-blue-600"
+                onChange={(e) => setSyncMode(e.target.value as 'full' | 'incremental')}
+                className="w-4 h-4 text-blue-600"
               />
-              <span className="font-medium">Incremental Sync</span>
-              <span className="text-sm text-gray-500">(Updates only, ~5 min)</span>
+              <span className="text-gray-700 dark:text-gray-300">Incremental Sync (Recent only)</span>
             </label>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={syncMode === 'full' ? startFullSync : startIncrementalSync}
-              disabled={syncing}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            >
-              {syncing ? <FaSpinner className="animate-spin" /> : <FaPlay />}
-              {syncing ? 'Syncing...' : `Start ${syncMode === 'full' ? 'Full' : 'Incremental'} Sync`}
-            </button>
-
-            <button
-              onClick={loadData}
-              disabled={loading}
-              className="flex items-center gap-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-            >
-              <FaSyncAlt className={loading ? 'animate-spin' : ''} />
-              Refresh Data
-            </button>
-          </div>
+          <button
+            onClick={syncMode === 'full' ? startFullSync : startIncrementalSync}
+            disabled={syncing}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              syncing
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
+          >
+            {syncing ? (
+              <>
+                <FaSpinner className="inline animate-spin mr-2" />
+                Syncing...
+              </>
+            ) : (
+              <>
+                <FaPlay className="inline mr-2" />
+                Start {syncMode === 'full' ? 'Full' : 'Incremental'} Sync
+              </>
+            )}
+          </button>
 
           {syncing && (
             <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -317,7 +308,7 @@ const DaftData: React.FC = () => {
                     </span>
                   </div>
                   <span className="text-gray-800 dark:text-white font-medium text-right">
-                    {log.properties_added} new • {log.properties_updated} updated • {Math.floor(log.duration_seconds / 60)}m {log.duration_seconds % 60}s
+                    {log.agencies_scraped} agencies • {log.properties_added} new • {log.properties_updated} updated • {Math.floor(log.duration_seconds / 60)}m {log.duration_seconds % 60}s
                   </span>
                 </div>
               ))}
@@ -326,56 +317,83 @@ const DaftData: React.FC = () => {
         )}
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-          <div className="border-b border-gray-200 dark:border-gray-700">
-            <div className="flex">
-              <button
-                onClick={() => setActiveTab('properties')}
-                className={`px-6 py-3 font-medium ${
-                  activeTab === 'properties'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
-                }`}
-              >
-                Properties ({properties.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('agencies')}
-                className={`px-6 py-3 font-medium ${
-                  activeTab === 'agencies'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
-                }`}
-              >
-                Agencies ({agencies.length})
-              </button>
+          <div className="p-6 border-b dark:border-gray-700">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Estate Agents ({filteredAgencies.length})</h2>
+              <input
+                type="text"
+                placeholder="Search agencies..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              />
             </div>
           </div>
 
-          <div className="p-4">
-            <SearchBarModal
-              searchText={searchTerm}
-              onSearchChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={`Search ${activeTab}...`}
-            />
+          {loading ? (
+            <div className="flex justify-center items-center p-12">
+              <FaSpinner className="animate-spin text-4xl text-blue-600" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+              {filteredAgencies.map(agency => (
+                <div
+                  key={agency.id}
+                  onClick={() => handleAgencyClick(agency)}
+                  className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 hover:shadow-lg transition-all cursor-pointer border-2 border-transparent hover:border-blue-500"
+                >
+                  <div className="flex items-start gap-4 mb-4">
+                    {agency.logo_url ? (
+                      <img
+                        src={agency.logo_url}
+                        alt={agency.name}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                        <FaBuilding className="text-2xl text-blue-600 dark:text-blue-300" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">{agency.name}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {agency.total_properties || 0} properties
+                      </p>
+                    </div>
+                  </div>
 
-            {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <FaSpinner className="animate-spin text-4xl text-gray-400" />
-              </div>
-            ) : activeTab === 'properties' ? (
-              <Table
-                data={filteredProperties}
-                columns={propertyColumns}
-                keyField="id"
-              />
-            ) : (
-              <Table
-                data={filteredAgencies}
-                columns={agencyColumns}
-                keyField="id"
-              />
-            )}
-          </div>
+                  <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    {agency.phone && <p>📞 {agency.phone}</p>}
+                    {agency.email && <p>📧 {agency.email}</p>}
+                  </div>
+
+                  {agency.website && (
+                    <a
+                      href={agency.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-blue-600 dark:text-blue-400 text-sm hover:underline flex items-center gap-1"
+                    >
+                      Visit website <FaExternalLinkAlt className="text-xs" />
+                    </a>
+                  )}
+
+                  <div className="mt-4 pt-4 border-t dark:border-gray-600">
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      Last synced: {new Date(agency.last_scraped_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!loading && filteredAgencies.length === 0 && (
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+              No agencies found. Run a sync to import data from Daft.ie
+            </div>
+          )}
         </div>
       </div>
     </div>
