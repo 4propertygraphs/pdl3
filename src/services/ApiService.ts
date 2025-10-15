@@ -288,6 +288,19 @@ class ApiService {
             }
         });
     }
+
+    // Sync external sources (Daft, MyHome, WordPress) for all agencies
+    syncExternalSources() {
+        const token = this.getStefanmarsToken();
+        return axios.get(`${this.edgeFunctionsUrl}/sync-external-sources`, {
+            headers: {
+                'apikey': this.supabaseAnonKey,
+                'Authorization': `Bearer ${this.supabaseAnonKey}`,
+                'token': token
+            },
+            timeout: 600000
+        });
+    }
 }
 
 const apiService = new ApiService();

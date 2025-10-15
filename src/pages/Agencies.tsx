@@ -374,6 +374,9 @@ function Agencies() {
 
     const [showDataMigration, setShowDataMigration] = useState(false);
 
+    const [syncExternalSourcesLoading, setSyncExternalSourcesLoading] = useState(false);
+    const [syncExternalSourcesError, setSyncExternalSourcesError] = useState<string | null>(null);
+
     const handleSyncProperties = async () => {
         if (!window.confirm("This will sync properties from the API for all agencies. This may take several minutes. Continue?")) {
             return;
@@ -410,6 +413,37 @@ function Agencies() {
 
         // Refresh the agency list to update counts
         await refreshAgencies();
+    };
+
+    const handleSyncExternalSources = async () => {
+        if (!window.confirm("This will sync external sources (Daft, MyHome, WordPress) for all agencies. This may take 10+ minutes. Continue?")) {
+            return;
+        }
+
+        setSyncExternalSourcesError(null);
+        setSyncExternalSourcesLoading(true);
+
+        try {
+            const response = await apiService.syncExternalSources();
+            const result = response.data;
+
+            if (result.success) {
+                let totalSynced = 0;
+                result.results.forEach((agencyResult: any) => {
+                    totalSynced += (agencyResult.sources.daft?.synced || 0);
+                    totalSynced += (agencyResult.sources.myhome?.synced || 0);
+                    totalSynced += (agencyResult.sources.wordpress?.synced || 0);
+                });
+                alert(`Successfully synced ${totalSynced} properties from external sources!`);
+            } else {
+                setSyncExternalSourcesError('Failed to sync external sources.');
+            }
+        } catch (error) {
+            console.error('Error syncing external sources:', error);
+            setSyncExternalSourcesError('Failed to sync external sources. Check console for details.');
+        } finally {
+            setSyncExternalSourcesLoading(false);
+        }
     };
 
     // Only define handleSearchChange if logged in
@@ -557,6 +591,19 @@ function Agencies() {
                                             {syncProgress ? `Sync Properties (${syncProgress.current}/${syncProgress.total})` : 'Sync Properties'}
                                         </button>
 
+                                        {/* Add button for syncing external sources */}
+                                        <button
+                                            className="ml-4 px-2 py-1 text-xs rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-200 hover:bg-purple-200 dark:hover:bg-purple-800"
+                                            onClick={handleSyncExternalSources}
+                                            disabled={syncExternalSourcesLoading}
+                                            title="Sync external sources (Daft, MyHome, WordPress) for all agencies"
+                                        >
+                                            {syncExternalSourcesLoading ? (
+                                                <span className="inline-block w-4 h-4 mr-1 align-middle border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></span>
+                                            ) : null}
+                                            Sync External Sources
+                                        </button>
+
                                         {/* Add button for data migration */}
                                         <button
                                             className="ml-4 px-2 py-1 text-xs rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-200 hover:bg-teal-200 dark:hover:bg-teal-800"
@@ -566,9 +613,12 @@ function Agencies() {
                                             Data Migration
                                         </button>
 
-                                        {/* Show sync error if present */}
+                                        {/* Show sync errors if present */}
                                         {syncError && (
                                             <span className="ml-4 text-xs text-red-500 font-normal">{syncError}</span>
+                                        )}
+                                        {syncExternalSourcesError && (
+                                            <span className="ml-4 text-xs text-red-500 font-normal">{syncExternalSourcesError}</span>
                                         )}
 
                                         {/* Replace this button to use createAgency modal type */}
