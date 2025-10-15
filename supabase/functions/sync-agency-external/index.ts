@@ -47,24 +47,46 @@ async function syncDaftProperties(supabaseClient: any, agency: any, apiToken: st
 
         if (response.ok) {
           const text = await response.text();
-          if (text && text.trim() !== "") {
-            const data = JSON.parse(text);
-            const apiCreated = extractDate(data, 'startDate');
-
-            await supabaseClient.from('daft_properties').upsert({
-              agency_id: agency.id,
-              external_id: prop.external_id,
-              raw_data: data,
-              api_created_at: apiCreated,
-              api_modified_at: null,
-              last_fetched: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }, { onConflict: 'agency_id,external_id' });
-
-            synced++;
+          if (!text || text.trim() === "" || text === '""' || text === "null") {
+            console.log(`   ⚠️  [DAFT] Empty response for ${prop.external_id}`);
+            errors++;
+            continue;
           }
+
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (parseError) {
+            console.error(`   ❌ [DAFT] JSON parse error for ${prop.external_id}:`, text.substring(0, 100));
+            errors++;
+            continue;
+          }
+
+          if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+            console.log(`   ⚠️  [DAFT] Empty object for ${prop.external_id}`);
+            errors++;
+            continue;
+          }
+
+          const apiCreated = extractDate(data, 'startDate');
+
+          await supabaseClient.from('daft_properties').upsert({
+            agency_id: agency.id,
+            external_id: prop.external_id,
+            raw_data: data,
+            api_created_at: apiCreated,
+            api_modified_at: null,
+            last_fetched: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'agency_id,external_id' });
+
+          synced++;
+        } else {
+          console.log(`   ⚠️  [DAFT] HTTP ${response.status} for ${prop.external_id}`);
+          errors++;
         }
       } catch (e) {
+        console.error(`   ❌ [DAFT] Exception for ${prop.external_id}:`, e.message);
         errors++;
       }
     }
@@ -104,25 +126,42 @@ async function syncMyHomeProperties(supabaseClient: any, agency: any, apiToken: 
         });
 
         if (response.ok) {
-          const data = await response.json();
-          if (data && Object.keys(data).length > 0) {
-            const apiCreated = extractDate(data, 'CreatedOnDate');
-            const apiModified = extractDate(data, 'ModifiedOnDate');
-
-            await supabaseClient.from('myhome_properties').upsert({
-              agency_id: agency.id,
-              external_id: prop.external_id,
-              raw_data: data,
-              api_created_at: apiCreated,
-              api_modified_at: apiModified,
-              last_fetched: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }, { onConflict: 'agency_id,external_id' });
-
-            synced++;
+          let data;
+          try {
+            data = await response.json();
+          } catch (parseError) {
+            const text = await response.text();
+            console.error(`   ❌ [MYHOME] JSON parse error for ${prop.external_id}:`, text.substring(0, 100));
+            errors++;
+            continue;
           }
+
+          if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+            console.log(`   ⚠️  [MYHOME] Empty object for ${prop.external_id}`);
+            errors++;
+            continue;
+          }
+
+          const apiCreated = extractDate(data, 'CreatedOnDate');
+          const apiModified = extractDate(data, 'ModifiedOnDate');
+
+          await supabaseClient.from('myhome_properties').upsert({
+            agency_id: agency.id,
+            external_id: prop.external_id,
+            raw_data: data,
+            api_created_at: apiCreated,
+            api_modified_at: apiModified,
+            last_fetched: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'agency_id,external_id' });
+
+          synced++;
+        } else {
+          console.log(`   ⚠️  [MYHOME] HTTP ${response.status} for ${prop.external_id}`);
+          errors++;
         }
       } catch (e) {
+        console.error(`   ❌ [MYHOME] Exception for ${prop.external_id}:`, e.message);
         errors++;
       }
     }
