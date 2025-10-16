@@ -417,7 +417,7 @@ function Agencies() {
     };
 
     const handleSyncExternalSources = async () => {
-        if (!window.confirm("This will sync external sources (Daft, MyHome, WordPress) for all agencies. This may take several minutes. Continue?")) {
+        if (!window.confirm("This will sync external sources (Daft, MyHome, WordPress, Acquaint) for all agencies. This may take several minutes. Continue?")) {
             return;
         }
 
@@ -456,17 +456,19 @@ function Agencies() {
                         const daftSynced = agencyResult.sources.daft?.synced || 0;
                         const myhomeSynced = agencyResult.sources.myhome?.synced || 0;
                         const wordpressSynced = agencyResult.sources.wordpress?.synced || 0;
+                        const acquaintSynced = agencyResult.sources.acquaint?.synced || 0;
 
-                        const agencyTotal = daftSynced + myhomeSynced + wordpressSynced;
+                        const agencyTotal = daftSynced + myhomeSynced + wordpressSynced + acquaintSynced;
                         totalSynced += agencyTotal;
 
                         console.log(`✅ [SYNC] ${agency.name}:`);
                         console.log(`   - Daft: ${daftSynced} properties ${agencyResult.sources.daft?.skipped ? `(${agencyResult.sources.daft.skipped})` : ''}`);
                         console.log(`   - MyHome: ${myhomeSynced} properties ${agencyResult.sources.myhome?.skipped ? `(${agencyResult.sources.myhome.skipped})` : ''}`);
                         console.log(`   - WordPress: ${wordpressSynced} properties ${agencyResult.sources.wordpress?.skipped ? `(${agencyResult.sources.wordpress.skipped})` : ''}`);
+                        console.log(`   - Acquaint: ${acquaintSynced} properties ${agencyResult.sources.acquaint?.skipped ? `(${agencyResult.sources.acquaint.skipped})` : ''}`);
 
                         if (agencyTotal > 0) {
-                            details.push(`${agency.name}: Daft(${daftSynced}) MyHome(${myhomeSynced}) WP(${wordpressSynced})`);
+                            details.push(`${agency.name}: Daft(${daftSynced}) MyHome(${myhomeSynced}) WP(${wordpressSynced}) Acquaint(${acquaintSynced})`);
                         }
 
                         successCount++;
@@ -650,7 +652,7 @@ function Agencies() {
                                             className="ml-4 px-2 py-1 text-xs rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-200 hover:bg-purple-200 dark:hover:bg-purple-800"
                                             onClick={handleSyncExternalSources}
                                             disabled={syncExternalSourcesLoading}
-                                            title="Sync external sources (Daft, MyHome, WordPress) for all agencies"
+                                            title="Sync external sources (Daft, MyHome, WordPress, Acquaint) for all agencies"
                                         >
                                             {syncExternalSourcesLoading ? (
                                                 <span className="inline-block w-4 h-4 mr-1 align-middle border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></span>

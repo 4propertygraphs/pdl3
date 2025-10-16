@@ -149,20 +149,65 @@ async function syncWordPressProperties(supabaseClient: any, agency: any, apiToke
             updated_at: new Date().toISOString(),
           }, { onConflict: 'agency_id,external_id' });
 
+          synced++;
+        } catch (e) {
+          errors++;
+        }
+      }
+    }
+  } catch (e) {
+    return { synced, errors, error: e.message };
+  }
+
+  return { synced, errors };
+}
+
+async function syncAcquaintProperties(supabaseClient: any, agency: any) {
+  if (!agency.acquaint_site_prefix) return { synced: 0, errors: 0, skipped: 'No Acquaint site prefix' };
+
+  let synced = 0;
+  let errors = 0;
+
+  try {
+    const { data: properties } = await supabaseClient
+      .from('properties')
+      .select('external_id')
+      .eq('agency_id', agency.id);
+
+    if (!properties || properties.length === 0) return { synced, errors, skipped: 'No properties' };
+
+    const acquaintUrl = `https://www.acquaintcrm.co.uk/datafeeds/standardxml/${agency.acquaint_site_prefix}-0.xml`;
+    const response = await fetch(acquaintUrl);
+
+    if (!response.ok) {
+      return { synced, errors: properties.length, error: `Failed to fetch from Acquaint (${response.status})` };
+    }
+
+    const xmlText = await response.text();
+    const { parse } = await import('npm:xml2js@0.6.2');
+    const parser = new parse.Parser();
+    const result = await parser.parseStringPromise(xmlText);
+    const acquaintProperties = result?.data?.properties?.property || [];
+
+    for (const prop of properties) {
+      try {
+        const matchingProperty = acquaintProperties.find((ap: any) => ap.id && ap.id[0] === prop.external_id);
+
+        if (matchingProperty) {
           await supabaseClient.from('acquaint_properties').upsert({
             agency_id: agency.id,
-            external_id: propertyData.ListReff,
-            raw_data: propertyData,
-            api_created_at: apiCreated,
-            api_modified_at: apiModified,
+            external_id: prop.external_id,
+            raw_data: matchingProperty,
+            api_created_at: null,
+            api_modified_at: null,
             last_fetched: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }, { onConflict: 'agency_id,external_id' });
 
           synced++;
-        } catch (e) {
-          errors++;
         }
+      } catch (e) {
+        errors++;
       }
     }
   } catch (e) {
@@ -230,10 +275,15 @@ Deno.serve(async (req: Request) => {
       agencyResult.sources.myhome = myhomeResult;
       console.log(`   ✅ [MYHOME] Result:`, myhomeResult);
 
-      console.log(`   📍 [WORDPRESS] Syncing WordPress/Acquaint properties...`);
+      console.log(`   📍 [WORDPRESS] Syncing WordPress properties...`);
       const wordpressResult = await syncWordPressProperties(supabaseClient, agency, apiToken);
       agencyResult.sources.wordpress = wordpressResult;
       console.log(`   ✅ [WORDPRESS] Result:`, wordpressResult);
+
+      console.log(`   📍 [ACQUAINT] Syncing Acquaint properties...`);
+      const acquaintResult = await syncAcquaintProperties(supabaseClient, agency);
+      agencyResult.sources.acquaint = acquaintResult;
+      console.log(`   ✅ [ACQUAINT] Result:`, acquaintResult);
 
       results.push(agencyResult);
     }
